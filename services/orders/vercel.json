@@ -1,0 +1,23 @@
+{
+  "functions": {
+    "api/*.ts": {
+      "maxDuration": 10,
+      "memory": 512,
+      "runtime": "nodejs20.x"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/api"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/api/$1"
+    }
+  ],
+  "env": {
+    "SERVICE_NAME": "orders-service",
+    "NODE_ENV": "production"
+  }
+}
