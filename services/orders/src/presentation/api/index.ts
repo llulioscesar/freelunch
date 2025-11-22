@@ -1,9 +1,9 @@
+/**
+ * API Endpoint: Health Check
+ * Presentation layer for service health check
+ */
 import { VercelRequest, VercelResponse } from '@vercel/node';
 
-/**
- * Health check endpoint for Orders Service
- * GET /api or GET /
- */
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse
@@ -13,13 +13,13 @@ export default async function handler(
   }
 
   try {
-    // Check database connection (optional)
-    // await prisma.$queryRaw`SELECT 1`;
+    // TODO: Add actual health checks (DB connection, dependencies, etc.)
 
     return res.status(200).json({
       service: 'orders-service',
       status: 'healthy',
-      version: '1.0.0',
+      version: '2.0.0', // Updated for hexagonal architecture
+      architecture: 'hexagonal',
       timestamp: new Date().toISOString(),
       endpoints: [
         'POST /api/create - Create new order',
@@ -27,6 +27,12 @@ export default async function handler(
         'GET /api/status?id={orderId} - Get order status',
         'PATCH /api/status?id={orderId} - Update order status',
       ],
+      layers: {
+        domain: 'Ready',
+        application: 'Ready',
+        infrastructure: 'Ready',
+        presentation: 'Ready',
+      },
     });
   } catch (error) {
     console.error('Health check failed:', error);

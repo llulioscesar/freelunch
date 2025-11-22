@@ -1,6 +1,6 @@
 {
   "functions": {
-    "api/*.ts": {
+    "src/presentation/api/*.ts": {
       "maxDuration": 10,
       "memory": 512,
       "runtime": "nodejs20.x"
@@ -9,11 +9,11 @@
   "rewrites": [
     {
       "source": "/",
-      "destination": "/api"
+      "destination": "/src/presentation/api"
     },
     {
       "source": "/(.*)",
-      "destination": "/api/$1"
+      "destination": "/src/presentation/api/$1"
     }
   ],
   "env": {

@@ -7,8 +7,13 @@
     "dev": "vercel dev --listen 3001",
     "build": "tsc",
     "test": "jest",
-    "lint": "eslint . --ext .ts",
-    "deploy": "vercel --prod"
+    "lint": "eslint src --ext .ts",
+    "deploy": "vercel --prod",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
+    "clean": "rm -rf dist node_modules .turbo"
   },
   "dependencies": {
     "@prisma/client": "^5.7.0",
