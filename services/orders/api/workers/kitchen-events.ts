@@ -1,15 +1,14 @@
 /**
  * API Endpoint: Kitchen Events Worker Trigger
  *
- * This endpoint can be called by Vercel Cron to process Kitchen events.
- * Configure in vercel.json:
+ * This endpoint is called by an external cron service (e.g., cron-job.org)
+ * to process Kitchen events every minute.
  *
- * {
- *   "crons": [{
- *     "path": "/api/workers/kitchen-events",
- *     "schedule": "* * * * *"  // Every minute
- *   }]
- * }
+ * Configuration:
+ * - URL: https://your-vercel-url.vercel.app/api/workers/kitchen-events
+ * - Method: GET or POST
+ * - Schedule: Every 1 minute
+ * - Service: cron-job.org (free tier supports up to 50 jobs, 1-minute intervals)
  */
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { dependencies } from '../../src/infrastructure/config/dependencies';
