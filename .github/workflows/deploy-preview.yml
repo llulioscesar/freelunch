@@ -3,7 +3,7 @@ name: Deploy Preview
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-    branches: [main, develop, dev]
+    branches: [test]
 
 permissions:
   contents: read
