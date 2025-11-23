@@ -60,6 +60,9 @@ jobs:
     needs: detect-changes
     if: needs.detect-changes.outputs.orders == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -126,6 +129,9 @@ jobs:
     needs: detect-changes
     if: needs.detect-changes.outputs.kitchen == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
