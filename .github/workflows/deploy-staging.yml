@@ -1,16 +1,14 @@
-name: Deploy Preview
+name: Deploy Staging
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+  push:
     branches: [test]
 
 permissions:
   contents: read
-  pull-requests: read
 
 concurrency:
-  group: preview-${{ github.ref }}
+  group: staging-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -19,13 +17,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: read
     outputs:
       orders: ${{ steps.changes.outputs.orders }}
       kitchen: ${{ steps.changes.outputs.kitchen }}
-      warehouse: ${{ steps.changes.outputs.warehouse }}
-      market: ${{ steps.changes.outputs.market }}
-      frontend: ${{ steps.changes.outputs.frontend }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,6 +32,7 @@ jobs:
         with:
           list-files: shell
           token: ${{ github.token }}
+          base: ${{ github.event.before }}
           filters: |
             orders:
               - 'services/orders/**'
@@ -45,24 +40,12 @@ jobs:
             kitchen:
               - 'services/kitchen/**'
               - 'packages/**'
-            warehouse:
-              - 'services/warehouse/**'
-              - 'packages/**'
-            market:
-              - 'services/market/**'
-              - 'packages/**'
-            frontend:
-              - 'frontend/**'
-              - 'packages/**'
 
-  deploy-orders-preview:
-    name: Deploy Orders Preview
+  deploy-orders-staging:
+    name: Deploy Orders to Staging
     needs: detect-changes
     if: needs.detect-changes.outputs.orders == 'true'
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -89,7 +72,7 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_ORDERS }}
         run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
 
-      - name: Deploy Preview to Vercel
+      - name: Deploy to Staging
         id: deploy
         working-directory: ./services/orders
         env:
@@ -99,39 +82,19 @@ jobs:
           url=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
           echo "url=$url" >> $GITHUB_OUTPUT
 
-      - name: Comment PR with Preview URL
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const url = '${{ steps.deploy.outputs.url }}';
-            const comment = `## 🚀 Orders Service Preview Deployed
+      - name: Deployment Summary
+        run: |
+          echo "### Orders Service Deployed to Staging 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Staging URL:** ${{ steps.deploy.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** test" >> $GITHUB_STEP_SUMMARY
 
-            **Preview URL:** ${url}
-
-            ### Endpoints:
-            - Health: ${url}/api
-            - Create Order: ${url}/api/create
-            - List Orders: ${url}/api/list
-            - Metrics: ${url}/api/metrics
-
-            ---
-            *Deployed from commit ${{ github.sha }}*`;
-
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
-            });
-
-  deploy-kitchen-preview:
-    name: Deploy Kitchen Preview
+  deploy-kitchen-staging:
+    name: Deploy Kitchen to Staging
     needs: detect-changes
     if: needs.detect-changes.outputs.kitchen == 'true'
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -158,7 +121,7 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_KITCHEN }}
         run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
 
-      - name: Deploy Preview to Vercel
+      - name: Deploy to Staging
         id: deploy
         working-directory: ./services/kitchen
         env:
@@ -168,40 +131,10 @@ jobs:
           url=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
           echo "url=$url" >> $GITHUB_OUTPUT
 
-      - name: Comment PR with Preview URL
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const url = '${{ steps.deploy.outputs.url }}';
-            const comment = `## 🍳 Kitchen Service Preview Deployed
-
-            **Preview URL:** ${url}
-
-            ### Endpoints:
-            - Health: ${url}/api
-            - Recipes: ${url}/api/recipes
-
-            ---
-            *Deployed from commit ${{ github.sha }}*`;
-
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
-            });
-
-  preview-summary:
-    name: Preview Deployment Summary
-    if: always()
-    needs: [detect-changes, deploy-orders-preview, deploy-kitchen-preview]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Summary
+      - name: Deployment Summary
         run: |
-          echo "### Preview Deployment Results" >> $GITHUB_STEP_SUMMARY
+          echo "### Kitchen Service Deployed to Staging 🍳" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Service | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|---------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Orders | ${{ needs.deploy-orders-preview.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Kitchen | ${{ needs.deploy-kitchen-preview.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "**Staging URL:** ${{ steps.deploy.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** test" >> $GITHUB_STEP_SUMMARY
