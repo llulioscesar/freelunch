@@ -79,7 +79,8 @@ next-env.d.ts
 
 # Next.js build output
 .next
-out
+/.next/out
+**/build/out
 
 # Nuxt.js build / generate output
 .nuxt
