@@ -40,20 +40,18 @@ export default async function handler(
 
     await consumer.initialize();
 
-    // Process pending messages
-    const pending = await consumer.getPendingMessages();
-    logger.info('Pending messages found', {
-      count: pending?.length || 0,
-    });
-
-    // Claim stale messages (fault tolerance)
+    // Claim stale messages first (fault tolerance)
     await consumer.claimStaleMessages();
+
+    // Process pending messages (batch)
+    // Note: Vercel has 10s timeout, so we process in batches
+    const processed = await consumer.processBatch(10); // Process up to 10 messages
 
     const duration = Date.now() - startTime;
 
     return res.status(200).json({
       success: true,
-      processed: pending?.length || 0,
+      processed,
       duration,
       timestamp: new Date().toISOString(),
     });
