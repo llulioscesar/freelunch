@@ -11,12 +11,6 @@
       "runtime": "nodejs20.x"
     }
   },
-  "crons": [
-    {
-      "path": "/api/workers/kitchen-events",
-      "schedule": "* * * * *"
-    }
-  ],
   "rewrites": [
     {
       "source": "/",
