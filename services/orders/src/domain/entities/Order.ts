@@ -11,7 +11,7 @@ import { OrderStatusChangedEvent } from '../events/OrderStatusChangedEvent';
 import { OrderCompletedEvent } from '../events/OrderCompletedEvent';
 import { OrderFailedEvent } from '../events/OrderFailedEvent';
 import { logger } from '../../infrastructure/logging/Logger';
-import { OrderItem, OrderItemStatus } from './OrderItem';
+import { OrderItem } from './OrderItem';
 import { OrderItemId } from '../value-objects/OrderItemId';
 
 export class Order {

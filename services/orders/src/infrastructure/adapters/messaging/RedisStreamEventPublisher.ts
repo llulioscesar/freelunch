@@ -13,10 +13,6 @@
  */
 import { EventPublisher } from '../../../application/ports/out/EventPublisher';
 import { DomainEvent } from '../../../domain/events/DomainEvent';
-import { OrderCreatedEvent } from '../../../domain/events/OrderCreatedEvent';
-import { OrderCompletedEvent } from '../../../domain/events/OrderCompletedEvent';
-import { OrderFailedEvent } from '../../../domain/events/OrderFailedEvent';
-import { OrderStatusChangedEvent } from '../../../domain/events/OrderStatusChangedEvent';
 import { RedisClient } from '../cache/RedisClient';
 import { logger } from '../../logging/Logger';
 import { metricsService } from '../../metrics/MetricsService';
@@ -30,8 +26,6 @@ export class RedisStreamEventPublisher implements EventPublisher {
   }
 
   async publish(event: DomainEvent): Promise<void> {
-    const startTime = Date.now();
-
     try {
       const eventData = this.serializeEvent(event);
 

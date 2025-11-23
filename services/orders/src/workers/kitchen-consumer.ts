@@ -64,7 +64,7 @@ export async function processBatch(): Promise<{ processed: number }> {
     await tempConsumer.initialize();
 
     // Process up to 10 messages
-    let processed = 0;
+    const processed = 0;
     // TODO: Implement batch processing
     // For now, this is a placeholder
 

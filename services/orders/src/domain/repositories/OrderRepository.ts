@@ -14,6 +14,7 @@ export interface OrderRepository {
   update(order: Order): Promise<void>;
   delete(id: OrderId): Promise<void>;
   exists(id: OrderId): Promise<boolean>;
+  disconnect?(): Promise<void>;
 }
 
 export interface OrderFilters {

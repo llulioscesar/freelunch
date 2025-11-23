@@ -12,7 +12,7 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { logger, LogContext } from './Logger';
 import { randomBytes } from 'crypto';
 
-export type Handler = (req: VercelRequest, res: VercelResponse) => Promise<void | Response>;
+export type Handler = (req: VercelRequest, res: VercelResponse) => Promise<void | VercelResponse>;
 
 /**
  * Generate unique request ID

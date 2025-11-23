@@ -136,7 +136,7 @@ export class KitchenEventsConsumer {
         }
 
         // Process messages
-        for (const [streamName, streamMessages] of messages as any) {
+        for (const [_streamName, streamMessages] of messages as any) {
           for (const [messageId, fields] of streamMessages) {
             await this.processMessage(messageId, fields);
           }

@@ -10,7 +10,7 @@ import { CachedOrderRepository } from '../adapters/persistence/CachedOrderReposi
 import { InMemoryOrderRepository } from '../adapters/persistence/InMemoryOrderRepository';
 import { MetricsOrderRepository } from '../adapters/persistence/MetricsOrderRepository';
 import { RedisStreamEventPublisher } from '../adapters/messaging/RedisStreamEventPublisher';
-import { RedisClient } from '../cache/RedisClient';
+import { RedisClient } from '../adapters/cache/RedisClient';
 import { CreateOrderUseCase } from '../../application/use-cases/CreateOrderUseCase';
 import { GetOrderStatusUseCase } from '../../application/use-cases/GetOrderStatusUseCase';
 import { ListOrdersUseCase } from '../../application/use-cases/ListOrdersUseCase';

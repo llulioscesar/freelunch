@@ -71,7 +71,7 @@ export class CachedOrderRepository implements OrderRepository {
 
     try {
       // 1. Try to get from cache
-      const cached = await this.redis.get<string>(cacheKey);
+      const cached = await this.redis.get(cacheKey);
 
       if (cached) {
         logger.logCacheOperation('hit', cacheKey, { entityId: id.getValue() });
@@ -110,7 +110,7 @@ export class CachedOrderRepository implements OrderRepository {
 
     try {
       // Try cache first
-      const cached = await this.redis.get<string>(cacheKey);
+      const cached = await this.redis.get(cacheKey);
 
       if (cached) {
         console.log(`✅ Cache HIT (list): ${cacheKey}`);
@@ -142,7 +142,7 @@ export class CachedOrderRepository implements OrderRepository {
     const cacheKey = this.getCountCacheKey(filters);
 
     try {
-      const cached = await this.redis.get<number>(cacheKey);
+      const cached = await this.redis.get(cacheKey);
       if (cached !== null) {
         console.log(`✅ Cache HIT (count): ${cacheKey}`);
         return cached;
@@ -235,7 +235,7 @@ export class CachedOrderRepository implements OrderRepository {
       filters.toDate?.toISOString() || 'any',
       filters.sortBy || 'createdAt',
       filters.sortOrder || 'desc',
-      filters.page?.toString() || '1',
+      filters.offset?.toString() || '0',
       filters.limit?.toString() || '10',
     ];
 

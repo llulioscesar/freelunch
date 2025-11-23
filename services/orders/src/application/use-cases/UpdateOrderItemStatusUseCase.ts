@@ -14,7 +14,6 @@ import { OrderRepository } from '../../domain/repositories/OrderRepository';
 import { OrderId } from '../../domain/value-objects/OrderId';
 import { OrderItemId } from '../../domain/value-objects/OrderItemId';
 import { OrderItemStatus } from '../../domain/entities/OrderItem';
-import { OrderStatusEnum } from '../../domain/value-objects/OrderStatus';
 import { EventPublisher } from '../ports/out/EventPublisher';
 import { logger } from '../../infrastructure/logging/Logger';
 import { metricsService } from '../../infrastructure/metrics/MetricsService';

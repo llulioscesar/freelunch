@@ -118,6 +118,8 @@ export class MetricsOrderRepository implements OrderRepository {
   }
 
   async disconnect(): Promise<void> {
-    return this.repository.disconnect();
+    if (this.repository.disconnect) {
+      return this.repository.disconnect();
+    }
   }
 }
