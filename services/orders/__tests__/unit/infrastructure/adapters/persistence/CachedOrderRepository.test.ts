@@ -1,0 +1,538 @@
+/**
+ * Unit Tests: CachedOrderRepository (Decorator with mocks)
+ */
+import { CachedOrderRepository } from '../../../../../src/infrastructure/adapters/persistence/CachedOrderRepository';
+import { PrismaOrderRepository } from '../../../../../src/infrastructure/adapters/persistence/PrismaOrderRepository';
+import { Order } from '../../../../../src/domain/entities/Order';
+import { OrderId } from '../../../../../src/domain/value-objects/OrderId';
+import { Quantity } from '../../../../../src/domain/value-objects/Quantity';
+import { CustomerInfo } from '../../../../../src/domain/value-objects/CustomerInfo';
+
+// Mock Redis client
+const mockRedis = {
+  get: jest.fn(),
+  set: jest.fn(),
+  del: jest.fn(),
+  keys: jest.fn(),
+  exists: jest.fn(),
+};
+
+jest.mock('@upstash/redis', () => ({
+  Redis: jest.fn().mockImplementation(() => mockRedis),
+}));
+
+jest.mock('../../../../../src/infrastructure/logging/Logger', () => ({
+  logger: {
+    logCacheOperation: jest.fn(),
+    logDomainEvent: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
+
+describe('CachedOrderRepository (Decorator with Mocks)', () => {
+  let mockBaseRepository: jest.Mocked<PrismaOrderRepository>;
+  let cachedRepository: CachedOrderRepository;
+
+  beforeAll(() => {
+    // Mock environment variables for RedisClient
+    process.env.REDIS_URL = 'redis://mock:6379';
+    process.env.REDIS_TOKEN = 'mock-token';
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    // Create mock base repository
+    mockBaseRepository = {
+      save: jest.fn(),
+      findById: jest.fn(),
+      findAll: jest.fn(),
+      count: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      exists: jest.fn(),
+      disconnect: jest.fn(),
+    } as any;
+
+    cachedRepository = new CachedOrderRepository(mockBaseRepository);
+  });
+
+  describe('save', () => {
+    it('should save to database and update cache', async () => {
+      const order = new Order(new OrderId(), new Quantity(1), new CustomerInfo('Test'));
+      mockBaseRepository.save.mockResolvedValue();
+      mockRedis.set.mockResolvedValue('OK');
+      mockRedis.keys.mockResolvedValue([]);
+      mockRedis.del.mockResolvedValue(0);
+
+      await cachedRepository.save(order);
+
+      expect(mockBaseRepository.save).toHaveBeenCalledWith(order);
+      expect(mockRedis.set).toHaveBeenCalledWith(
+        expect.stringContaining('order:'),
+        expect.any(String),
+        expect.objectContaining({ ex: expect.any(Number) })
+      );
+    });
+
+    it('should call save on base repository', async () => {
+      const order = new Order(new OrderId(), new Quantity(1), new CustomerInfo('Test'));
+      mockBaseRepository.save.mockResolvedValue();
+      mockRedis.set.mockResolvedValue('OK');
+
+      await cachedRepository.save(order);
+
+      expect(mockBaseRepository.save).toHaveBeenCalledWith(order);
+      expect(mockRedis.set).toHaveBeenCalled();
+    });
+  });
+
+  describe('findById', () => {
+    it('should return cached order on cache hit', async () => {
+      const orderId = new OrderId();
+      const orderPrimitives = {
+        id: orderId.getValue(),
+        quantity: 1,
+        status: 'PENDING',
+        customerName: 'Test',
+        notes: null,
+        createdAt: new Date().toISOString(),
+        completedAt: null,
+        updatedAt: new Date().toISOString(),
+        items: [],
+      };
+
+      mockRedis.get.mockResolvedValue(JSON.stringify(orderPrimitives));
+
+      const result = await cachedRepository.findById(orderId);
+
+      expect(result).toBeDefined();
+      expect(result?.getId().getValue()).toBe(orderId.getValue());
+      expect(mockBaseRepository.findById).not.toHaveBeenCalled();
+    });
+
+    it('should fetch from database on cache miss', async () => {
+      const orderId = new OrderId();
+      const order = new Order(orderId, new Quantity(1), new CustomerInfo('Test'));
+
+      mockRedis.get.mockResolvedValue(null);
+      mockBaseRepository.findById.mockResolvedValue(order);
+      mockRedis.set.mockResolvedValue('OK');
+
+      const result = await cachedRepository.findById(orderId);
+
+      expect(result).toBeDefined();
+      expect(mockBaseRepository.findById).toHaveBeenCalledWith(orderId);
+      expect(mockRedis.set).toHaveBeenCalled();
+    });
+
+    it('should return null when order not found', async () => {
+      const orderId = new OrderId();
+
+      mockRedis.get.mockResolvedValue(null);
+      mockBaseRepository.findById.mockResolvedValue(null);
+
+      const result = await cachedRepository.findById(orderId);
+
+      expect(result).toBeNull();
+    });
+
+    it('should handle cache errors gracefully', async () => {
+      const orderId = new OrderId();
+      const order = new Order(orderId, new Quantity(1), new CustomerInfo('Test'));
+
+      mockRedis.get.mockRejectedValue(new Error('Redis error'));
+      mockBaseRepository.findById.mockResolvedValue(order);
+
+      const result = await cachedRepository.findById(orderId);
+
+      expect(result).toBeDefined();
+      expect(mockBaseRepository.findById).toHaveBeenCalled();
+    });
+  });
+
+  describe('findAll', () => {
+    it('should return cached list on cache hit', async () => {
+      const orders = [
+        { id: 'ORD-1-ABC', quantity: 1, status: 'PENDING', customerName: 'Test 1', items: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+      ];
+
+      mockRedis.get.mockResolvedValue(JSON.stringify(orders));
+
+      const result = await cachedRepository.findAll();
+
+      expect(result).toHaveLength(1);
+      expect(mockBaseRepository.findAll).not.toHaveBeenCalled();
+    });
+
+    it('should fetch from database on cache miss', async () => {
+      const order = new Order(new OrderId(), new Quantity(1), new CustomerInfo('Test'));
+
+      mockRedis.get.mockResolvedValue(null);
+      mockBaseRepository.findAll.mockResolvedValue([order]);
+      mockRedis.set.mockResolvedValue('OK');
+
+      const result = await cachedRepository.findAll();
+
+      expect(result).toHaveLength(1);
+      expect(mockBaseRepository.findAll).toHaveBeenCalled();
+      expect(mockRedis.set).toHaveBeenCalled();
+    });
+
+    it('should handle cache errors gracefully', async () => {
+      const order = new Order(new OrderId(), new Quantity(1), new CustomerInfo('Test'));
+
+      mockRedis.get.mockRejectedValue(new Error('Redis error'));
+      mockBaseRepository.findAll.mockResolvedValue([order]);
+
+      const result = await cachedRepository.findAll();
+
+      expect(result).toHaveLength(1);
+      expect(mockBaseRepository.findAll).toHaveBeenCalled();
+    });
+  });
+
+  describe('count', () => {
+    it('should return cached count on cache hit', async () => {
+      mockRedis.get.mockResolvedValue(5);
+
+      const result = await cachedRepository.count();
+
+      expect(result).toBe(5);
+      expect(mockBaseRepository.count).not.toHaveBeenCalled();
+    });
+
+    it('should fetch from database on cache miss', async () => {
+      mockRedis.get.mockResolvedValue(null);
+      mockBaseRepository.count.mockResolvedValue(10);
+      mockRedis.set.mockResolvedValue('OK');
+
+      const result = await cachedRepository.count();
+
+      expect(result).toBe(10);
+      expect(mockBaseRepository.count).toHaveBeenCalled();
+      expect(mockRedis.set).toHaveBeenCalled();
+    });
+
+    it('should handle cache errors gracefully', async () => {
+      mockRedis.get.mockRejectedValue(new Error('Redis error'));
+      mockBaseRepository.count.mockResolvedValue(7);
+
+      const result = await cachedRepository.count();
+
+      expect(result).toBe(7);
+      expect(mockBaseRepository.count).toHaveBeenCalled();
+    });
+  });
+
+  describe('update', () => {
+    it('should update database and invalidate cache', async () => {
+      const order = new Order(new OrderId(), new Quantity(1), new CustomerInfo('Test'));
+      mockBaseRepository.update.mockResolvedValue();
+      mockRedis.del.mockResolvedValue(1);
+      mockRedis.keys.mockResolvedValue([]);
+
+      await cachedRepository.update(order);
+
+      expect(mockBaseRepository.update).toHaveBeenCalledWith(order);
+      expect(mockRedis.del).toHaveBeenCalled();
+    });
+  });
+
+  describe('delete', () => {
+    it('should delete from database and invalidate cache', async () => {
+      const orderId = new OrderId();
+      mockBaseRepository.delete.mockResolvedValue();
+      mockRedis.del.mockResolvedValue(1);
+      mockRedis.keys.mockResolvedValue([]);
+
+      await cachedRepository.delete(orderId);
+
+      expect(mockBaseRepository.delete).toHaveBeenCalledWith(orderId);
+      expect(mockRedis.del).toHaveBeenCalled();
+    });
+  });
+
+  describe('exists', () => {
+    it('should return true when key exists in cache', async () => {
+      const orderId = new OrderId();
+      mockRedis.exists.mockResolvedValue(1);
+
+      const result = await cachedRepository.exists(orderId);
+
+      expect(result).toBe(true);
+      expect(mockRedis.exists).toHaveBeenCalled();
+    });
+
+    it('should fallback to base repository when not in cache', async () => {
+      const orderId = new OrderId();
+      mockRedis.exists.mockResolvedValue(0);
+      mockBaseRepository.exists.mockResolvedValue(true);
+
+      const result = await cachedRepository.exists(orderId);
+
+      expect(result).toBe(true);
+      expect(mockBaseRepository.exists).toHaveBeenCalledWith(orderId);
+    });
+
+    it('should return false when not in cache or database', async () => {
+      const orderId = new OrderId();
+      mockRedis.exists.mockResolvedValue(0);
+      mockBaseRepository.exists.mockResolvedValue(false);
+
+      const result = await cachedRepository.exists(orderId);
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('findById with parsed object cache', () => {
+    it('should handle cached data that is already an object', async () => {
+      const orderId = new OrderId();
+      const orderPrimitives = {
+        id: orderId.getValue(),
+        quantity: 1,
+        status: 'PENDING',
+        customerName: 'Test',
+        notes: null,
+        createdAt: new Date().toISOString(),
+        completedAt: null,
+        updatedAt: new Date().toISOString(),
+        items: [],
+      };
+
+      mockRedis.get.mockResolvedValue(orderPrimitives);
+
+      const result = await cachedRepository.findById(orderId);
+
+      expect(result).toBeDefined();
+      expect(result?.getId().getValue()).toBe(orderId.getValue());
+    });
+  });
+
+  describe('findAll with parsed object cache', () => {
+    it('should handle cached list that is already parsed', async () => {
+      const orders = [
+        { id: 'ORD-1-ABC', quantity: 1, status: 'PENDING', customerName: 'Test 1', items: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+      ];
+
+      mockRedis.get.mockResolvedValue(orders);
+
+      const result = await cachedRepository.findAll();
+
+      expect(result).toHaveLength(1);
+    });
+  });
+
+  describe('filter combinations for cache keys', () => {
+    it('should create cache key with all filters', async () => {
+      const filters = {
+        status: new (require('../../../../../src/domain/value-objects/OrderStatus').OrderStatus)('PENDING'),
+        customerName: 'John',
+        fromDate: new Date('2024-01-01'),
+        toDate: new Date('2024-12-31'),
+        sortBy: 'createdAt' as const,
+        sortOrder: 'asc' as const,
+        page: 2,
+        limit: 20,
+      };
+
+      mockRedis.get.mockResolvedValue(null);
+      mockBaseRepository.findAll.mockResolvedValue([]);
+      mockRedis.set.mockResolvedValue('OK');
+
+      await cachedRepository.findAll(filters);
+
+      expect(mockRedis.get).toHaveBeenCalled();
+      expect(mockBaseRepository.findAll).toHaveBeenCalledWith(filters);
+    });
+
+    it('should create cache key with partial filters - only status', async () => {
+      const filters = {
+        status: new (require('../../../../../src/domain/value-objects/OrderStatus').OrderStatus)('PREPARING'),
+      };
+
+      mockRedis.get.mockResolvedValue(null);
+      mockBaseRepository.findAll.mockResolvedValue([]);
+      mockRedis.set.mockResolvedValue('OK');
+
+      await cachedRepository.findAll(filters);
+
+      expect(mockBaseRepository.findAll).toHaveBeenCalled();
+    });
+
+    it('should create cache key with partial filters - only dates', async () => {
+      const filters = {
+        fromDate: new Date('2024-01-01'),
+        toDate: new Date('2024-12-31'),
+      };
+
+      mockRedis.get.mockResolvedValue(null);
+      mockBaseRepository.findAll.mockResolvedValue([]);
+      mockRedis.set.mockResolvedValue('OK');
+
+      await cachedRepository.findAll(filters);
+
+      expect(mockBaseRepository.findAll).toHaveBeenCalled();
+    });
+
+    it('should create cache key with partial filters - only sorting', async () => {
+      const filters = {
+        sortBy: 'updatedAt' as const,
+        sortOrder: 'desc' as const,
+      };
+
+      mockRedis.get.mockResolvedValue(null);
+      mockBaseRepository.findAll.mockResolvedValue([]);
+      mockRedis.set.mockResolvedValue('OK');
+
+      await cachedRepository.findAll(filters);
+
+      expect(mockBaseRepository.findAll).toHaveBeenCalled();
+    });
+
+    it('should create cache key with partial filters - only pagination', async () => {
+      const filters = {
+        page: 3,
+        limit: 50,
+      };
+
+      mockRedis.get.mockResolvedValue(null);
+      mockBaseRepository.findAll.mockResolvedValue([]);
+      mockRedis.set.mockResolvedValue('OK');
+
+      await cachedRepository.findAll(filters);
+
+      expect(mockBaseRepository.findAll).toHaveBeenCalled();
+    });
+
+    it('should create cache key with fromDate only', async () => {
+      const filters = {
+        fromDate: new Date('2024-01-01'),
+      };
+
+      mockRedis.get.mockResolvedValue(null);
+      mockBaseRepository.findAll.mockResolvedValue([]);
+      mockRedis.set.mockResolvedValue('OK');
+
+      await cachedRepository.findAll(filters);
+
+      expect(mockBaseRepository.findAll).toHaveBeenCalled();
+    });
+
+    it('should create cache key with toDate only', async () => {
+      const filters = {
+        toDate: new Date('2024-12-31'),
+      };
+
+      mockRedis.get.mockResolvedValue(null);
+      mockBaseRepository.findAll.mockResolvedValue([]);
+      mockRedis.set.mockResolvedValue('OK');
+
+      await cachedRepository.findAll(filters);
+
+      expect(mockBaseRepository.findAll).toHaveBeenCalled();
+    });
+  });
+
+  describe('count with filter combinations', () => {
+    it('should count with all filter combinations', async () => {
+      const filters = {
+        status: new (require('../../../../../src/domain/value-objects/OrderStatus').OrderStatus)('PENDING'),
+        customerName: 'Jane',
+        fromDate: new Date('2024-06-01'),
+        toDate: new Date('2024-06-30'),
+      };
+
+      mockRedis.get.mockResolvedValue(null);
+      mockBaseRepository.count.mockResolvedValue(15);
+      mockRedis.set.mockResolvedValue('OK');
+
+      const result = await cachedRepository.count(filters);
+
+      expect(result).toBe(15);
+      expect(mockBaseRepository.count).toHaveBeenCalledWith(filters);
+    });
+
+    it('should count with only fromDate', async () => {
+      const filters = {
+        fromDate: new Date('2024-01-01'),
+      };
+
+      mockRedis.get.mockResolvedValue(null);
+      mockBaseRepository.count.mockResolvedValue(10);
+      mockRedis.set.mockResolvedValue('OK');
+
+      const result = await cachedRepository.count(filters);
+
+      expect(result).toBe(10);
+    });
+
+    it('should count with only toDate', async () => {
+      const filters = {
+        toDate: new Date('2024-12-31'),
+      };
+
+      mockRedis.get.mockResolvedValue(null);
+      mockBaseRepository.count.mockResolvedValue(8);
+      mockRedis.set.mockResolvedValue('OK');
+
+      const result = await cachedRepository.count(filters);
+
+      expect(result).toBe(8);
+    });
+  });
+
+
+  describe('hashFilters branch coverage', () => {
+    it('should handle filters with only customerName', async () => {
+      mockRedis.get.mockResolvedValue(null);
+      mockBaseRepository.findAll.mockResolvedValue([]);
+      mockRedis.set.mockResolvedValue('OK');
+
+      await cachedRepository.findAll({ customerName: 'TestUser' });
+
+      expect(mockBaseRepository.findAll).toHaveBeenCalled();
+    });
+
+    it('should handle filters with only page', async () => {
+      mockRedis.get.mockResolvedValue(null);
+      mockBaseRepository.findAll.mockResolvedValue([]);
+      mockRedis.set.mockResolvedValue('OK');
+
+      await cachedRepository.findAll({ page: 3 });
+
+      expect(mockBaseRepository.findAll).toHaveBeenCalled();
+    });
+
+    it('should handle filters with only limit', async () => {
+      mockRedis.get.mockResolvedValue(null);
+      mockBaseRepository.findAll.mockResolvedValue([]);
+      mockRedis.set.mockResolvedValue('OK');
+
+      await cachedRepository.findAll({ limit: 50 });
+
+      expect(mockBaseRepository.findAll).toHaveBeenCalled();
+    });
+
+    it('should handle filters with only sortBy', async () => {
+      mockRedis.get.mockResolvedValue(null);
+      mockBaseRepository.findAll.mockResolvedValue([]);
+      mockRedis.set.mockResolvedValue('OK');
+
+      await cachedRepository.findAll({ sortBy: 'updatedAt' });
+
+      expect(mockBaseRepository.findAll).toHaveBeenCalled();
+    });
+
+    it('should handle filters with only sortOrder', async () => {
+      mockRedis.get.mockResolvedValue(null);
+      mockBaseRepository.findAll.mockResolvedValue([]);
+      mockRedis.set.mockResolvedValue('OK');
+
+      await cachedRepository.findAll({ sortOrder: 'asc' });
+
+      expect(mockBaseRepository.findAll).toHaveBeenCalled();
+    });
+  });
+});
