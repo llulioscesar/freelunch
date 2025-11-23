@@ -48,23 +48,17 @@ export class KitchenEventsConsumer {
   }
 
   /**
-   * Initialize consumer group (idempotent)
+   * Initialize consumer group (idempotent) - Upstash syntax
    */
   async initialize(): Promise<void> {
     try {
-      // First, ensure stream exists by adding a dummy entry if needed
-      try {
-        await this.redis.xadd(
-          this.streamName,
-          '*',
-          { initialized: 'true', timestamp: new Date().toISOString() }
-        );
-      } catch (error) {
-        // Stream might already exist, ignore
-      }
-
-      // Now create consumer group
-      await this.redis.xgroup('CREATE', this.streamName, this.consumerGroup, '$');
+      // Create consumer group with correct Upstash syntax
+      await this.redis.xgroup(this.streamName, {
+        type: 'CREATE',
+        group: this.consumerGroup,
+        id: '$', // Start from new messages
+        options: { MKSTREAM: true }, // Create stream if doesn't exist
+      });
 
       logger.info('Consumer group created', {
         streamName: this.streamName,
@@ -118,27 +112,23 @@ export class KitchenEventsConsumer {
   }
 
   /**
-   * Main consumption loop
+   * Main consumption loop - Upstash XREADGROUP syntax
    */
   private async consumeLoop(): Promise<void> {
     while (this.isRunning) {
       try {
-        // Read new messages from stream
+        // Read new messages using Upstash XREADGROUP syntax
         const messages = await this.redis.xreadgroup(
-          'GROUP',
           this.consumerGroup,
           this.consumerId,
-          'BLOCK',
-          5000, // Block for 5 seconds waiting for messages
-          'COUNT',
-          10, // Process up to 10 messages at a time
-          'STREAMS',
           this.streamName,
-          '>' // Read only new messages
+          '>', // Read only new messages
+          { count: 10 }
         );
 
         if (!messages || messages.length === 0) {
-          continue; // No new messages, continue loop
+          await this.sleep(1000);
+          continue;
         }
 
         // Process messages
@@ -151,8 +141,6 @@ export class KitchenEventsConsumer {
         logger.error('Error in consume loop', error as Error, {
           consumerId: this.consumerId,
         });
-
-        // Wait a bit before retrying
         await this.sleep(this.pollInterval);
       }
     }
@@ -373,21 +361,18 @@ export class KitchenEventsConsumer {
   }
 
   /**
-   * Process a batch of messages (for serverless cron)
+   * Process a batch of messages (for serverless cron) - Upstash syntax
    * Returns the number of messages processed
    */
   async processBatch(maxMessages: number = 10): Promise<number> {
     try {
-      // Read pending messages for this consumer
+      // Read messages using Upstash XREADGROUP syntax
       const messages = await this.redis.xreadgroup(
-        'GROUP',
         this.consumerGroup,
         this.consumerId,
-        'COUNT',
-        maxMessages,
-        'STREAMS',
         this.streamName,
-        '>' // Only new messages
+        '>', // Only new messages
+        { count: maxMessages }
       );
 
       if (!messages || messages.length === 0) {
