@@ -11,12 +11,15 @@ import { OrderStatusChangedEvent } from '../events/OrderStatusChangedEvent';
 import { OrderCompletedEvent } from '../events/OrderCompletedEvent';
 import { OrderFailedEvent } from '../events/OrderFailedEvent';
 import { logger } from '../../infrastructure/logging/Logger';
+import { OrderItem, OrderItemStatus } from './OrderItem';
+import { OrderItemId } from '../value-objects/OrderItemId';
 
 export class Order {
   private readonly id: OrderId;
   private status: OrderStatus;
   private readonly quantity: Quantity;
   private readonly customerInfo: CustomerInfo;
+  private readonly items: OrderItem[];  // Individual dishes
   private readonly createdAt: Date;
   private completedAt?: Date;
   private updatedAt: Date;
@@ -27,7 +30,8 @@ export class Order {
     quantity: Quantity,
     customerInfo: CustomerInfo,
     status?: OrderStatus,
-    createdAt?: Date
+    createdAt?: Date,
+    items?: OrderItem[]
   ) {
     this.id = id;
     this.quantity = quantity;
@@ -35,6 +39,17 @@ export class Order {
     this.status = status || new OrderStatus(OrderStatusEnum.PENDING);
     this.createdAt = createdAt || new Date();
     this.updatedAt = new Date();
+
+    // Initialize order items (one per dish)
+    if (items) {
+      this.items = items;
+    } else {
+      // Create N order items for N dishes
+      this.items = [];
+      for (let i = 0; i < quantity.getValue(); i++) {
+        this.items.push(new OrderItem(new OrderItemId(), this.id));
+      }
+    }
 
     // Si es una nueva orden, emitir evento de creación
     if (!status) {
@@ -47,6 +62,7 @@ export class Order {
 
       logger.logDomainEvent('order.created', this.id.getValue(), {
         quantity: this.quantity.getValue(),
+        itemsCount: this.items.length,
         customerName: this.customerInfo.getName(),
       });
     }
@@ -79,6 +95,14 @@ export class Order {
 
   getUpdatedAt(): Date {
     return this.updatedAt;
+  }
+
+  getItems(): OrderItem[] {
+    return [...this.items]; // Return copy to prevent external modification
+  }
+
+  getItemById(itemId: OrderItemId): OrderItem | undefined {
+    return this.items.find(item => item.getId().equals(itemId));
   }
 
   // Business Methods
@@ -207,6 +231,40 @@ export class Order {
     return this.quantity.calculateEstimatedPreparationTime();
   }
 
+  // Order Items Business Rules
+  getTotalItems(): number {
+    return this.items.length;
+  }
+
+  getCompletedItems(): number {
+    return this.items.filter(item => item.isCompleted()).length;
+  }
+
+  getPendingItems(): number {
+    return this.items.filter(item => item.isPending()).length;
+  }
+
+  getReadyItems(): number {
+    return this.items.filter(item => item.isReady()).length;
+  }
+
+  getFailedItems(): number {
+    return this.items.filter(item => item.isFailed()).length;
+  }
+
+  isFullyCompleted(): boolean {
+    return this.items.every(item => item.isCompleted());
+  }
+
+  hasFailedItems(): boolean {
+    return this.items.some(item => item.isFailed());
+  }
+
+  getProgressPercentage(): number {
+    if (this.items.length === 0) return 0;
+    return Math.round((this.getCompletedItems() / this.items.length) * 100);
+  }
+
   // Serialization
   toPrimitives(): any {
     return {
@@ -215,6 +273,11 @@ export class Order {
       quantity: this.quantity.getValue(),
       customerName: this.customerInfo.getName(),
       notes: this.customerInfo.getNotes(),
+      items: this.items.map(item => item.toPrimitives()),
+      totalItems: this.getTotalItems(),
+      completedItems: this.getCompletedItems(),
+      pendingItems: this.getPendingItems(),
+      progress: this.getProgressPercentage(),
       createdAt: this.createdAt.toISOString(),
       completedAt: this.completedAt?.toISOString(),
       updatedAt: this.updatedAt.toISOString(),
