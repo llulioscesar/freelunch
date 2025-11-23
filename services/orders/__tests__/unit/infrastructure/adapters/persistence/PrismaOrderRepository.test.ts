@@ -1,0 +1,626 @@
+/**
+ * Unit Tests: PrismaOrderRepository (with mocks)
+ */
+import { PrismaOrderRepository } from '../../../../../src/infrastructure/adapters/persistence/PrismaOrderRepository';
+import { Order } from '../../../../../src/domain/entities/Order';
+import { OrderId } from '../../../../../src/domain/value-objects/OrderId';
+import { Quantity } from '../../../../../src/domain/value-objects/Quantity';
+import { CustomerInfo } from '../../../../../src/domain/value-objects/CustomerInfo';
+import { OrderStatus, OrderStatusEnum } from '../../../../../src/domain/value-objects/OrderStatus';
+
+// Mock PrismaClient
+const mockPrisma = {
+  order: {
+    create: jest.fn(),
+    findUnique: jest.fn(),
+    findMany: jest.fn(),
+    count: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+  },
+  orderItem: {
+    createMany: jest.fn(),
+    updateMany: jest.fn(),
+    deleteMany: jest.fn(),
+    upsert: jest.fn(),
+  },
+  $transaction: jest.fn((callback) => callback(mockPrisma)),
+  $disconnect: jest.fn(),
+};
+
+describe('PrismaOrderRepository (Unit with Mocks)', () => {
+  let repository: PrismaOrderRepository;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    repository = new PrismaOrderRepository(mockPrisma as any);
+  });
+
+  describe('save', () => {
+    it('should save order to database', async () => {
+      const order = new Order(
+        new OrderId(),
+        new Quantity(2),
+        new CustomerInfo('John Doe', 'No onions')
+      );
+
+      mockPrisma.order.create.mockResolvedValue({
+        id: order.getId().getValue(),
+        status: 'PENDING',
+        quantity: 2,
+        customerName: 'John Doe',
+        notes: 'No onions',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      await repository.save(order);
+
+      expect(mockPrisma.order.create).toHaveBeenCalled();
+      expect(mockPrisma.order.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            id: order.getId().getValue(),
+            quantity: 2,
+            customerName: 'John Doe',
+            notes: 'No onions',
+          }),
+        })
+      );
+    });
+  });
+
+  describe('findById', () => {
+    it('should find order by id', async () => {
+      const orderId = new OrderId('ORD-1234567890-ABC123');
+
+      mockPrisma.order.findUnique.mockResolvedValue({
+        id: orderId.getValue(),
+        status: 'PENDING',
+        quantity: 1,
+        customerName: 'Test',
+        notes: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        completedAt: null,
+        items: [{
+          id: 'ITEM-123-abc',
+          orderId: orderId.getValue(),
+          status: 'PENDING',
+          recipeId: null,
+          recipeName: null,
+          failureReason: null,
+          createdAt: new Date(),
+          preparedAt: null,
+          deliveredAt: null,
+        }],
+      });
+
+      const result = await repository.findById(orderId);
+
+      expect(result).toBeDefined();
+      expect(result?.getId().getValue()).toBe(orderId.getValue());
+      expect(mockPrisma.order.findUnique).toHaveBeenCalledWith({
+        where: { id: orderId.getValue() },
+        include: { items: true },
+      });
+    });
+
+    it('should return null when order not found', async () => {
+      mockPrisma.order.findUnique.mockResolvedValue(null);
+
+      const result = await repository.findById(new OrderId('ORD-9999999999-NOTFOUND'));
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('findAll', () => {
+    it('should find all orders', async () => {
+      mockPrisma.order.findMany.mockResolvedValue([
+        {
+          id: 'ORD-1-ABC',
+          status: 'PENDING',
+          quantity: 1,
+          customerName: 'Customer 1',
+          notes: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          completedAt: null,
+          items: [],
+        },
+      ]);
+
+      const result = await repository.findAll();
+
+      expect(result).toHaveLength(1);
+      expect(mockPrisma.order.findMany).toHaveBeenCalled();
+    });
+
+    it('should apply filters', async () => {
+      mockPrisma.order.findMany.mockResolvedValue([]);
+
+      await repository.findAll({
+        status: new OrderStatus(OrderStatusEnum.PENDING),
+        customerName: 'John',
+        limit: 10,
+        offset: 0,
+      });
+
+      expect(mockPrisma.order.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: OrderStatusEnum.PENDING,
+            customerName: expect.objectContaining({ contains: 'John' }),
+          }),
+          take: 10,
+          skip: 0,
+        })
+      );
+    });
+  });
+
+  describe('count', () => {
+    it('should count orders', async () => {
+      mockPrisma.order.count.mockResolvedValue(5);
+
+      const result = await repository.count();
+
+      expect(result).toBe(5);
+      expect(mockPrisma.order.count).toHaveBeenCalled();
+    });
+  });
+
+  describe('update', () => {
+    it('should update order', async () => {
+      const order = new Order(
+        new OrderId('ORD-1234567890-ABC123'),
+        new Quantity(1),
+        new CustomerInfo('Test')
+      );
+
+      mockPrisma.order.update.mockResolvedValue({
+        id: order.getId().getValue(),
+        status: 'PENDING',
+        quantity: 1,
+        customerName: 'Test',
+        notes: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        completedAt: null,
+      });
+
+      mockPrisma.orderItem.upsert.mockResolvedValue({
+        id: 'ITEM-123',
+        orderId: order.getId().getValue(),
+        recipeId: null,
+        recipeName: null,
+        status: 'PENDING',
+        createdAt: new Date(),
+        assignedAt: null,
+        preparedAt: null,
+        deliveredAt: null,
+        failureReason: null,
+      });
+
+      await repository.update(order);
+
+      expect(mockPrisma.$transaction).toHaveBeenCalled();
+      expect(mockPrisma.order.update).toHaveBeenCalled();
+    });
+  });
+
+  describe('delete', () => {
+    it('should delete order', async () => {
+      const orderId = new OrderId('ORD-1234567890-ABC123');
+
+      mockPrisma.order.delete.mockResolvedValue({
+        id: orderId.getValue(),
+        status: 'PENDING',
+        quantity: 1,
+        customerName: 'Test',
+        notes: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        completedAt: null,
+      });
+
+      await repository.delete(orderId);
+
+      expect(mockPrisma.order.delete).toHaveBeenCalledWith({
+        where: { id: orderId.getValue() },
+      });
+    });
+  });
+
+  describe('exists', () => {
+    it('should return true when order exists', async () => {
+      mockPrisma.order.count.mockResolvedValue(1);
+
+      const result = await repository.exists(new OrderId('ORD-1-ABC'));
+
+      expect(result).toBe(true);
+    });
+
+    it('should return false when order does not exist', async () => {
+      mockPrisma.order.count.mockResolvedValue(0);
+
+      const result = await repository.exists(new OrderId('ORD-9999-NOTFOUND'));
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('disconnect', () => {
+    it('should disconnect from database', async () => {
+      mockPrisma.$disconnect = jest.fn().mockResolvedValue(undefined);
+
+      await repository.disconnect();
+
+      expect(mockPrisma.$disconnect).toHaveBeenCalled();
+    });
+  });
+
+  describe('findAll with date filters', () => {
+    it('should filter by fromDate', async () => {
+      const fromDate = new Date('2024-01-01');
+      mockPrisma.order.findMany.mockResolvedValue([]);
+
+      await repository.findAll({ fromDate });
+
+      expect(mockPrisma.order.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            createdAt: expect.objectContaining({ gte: fromDate }),
+          }),
+        })
+      );
+    });
+
+    it('should filter by toDate', async () => {
+      const toDate = new Date('2024-12-31');
+      mockPrisma.order.findMany.mockResolvedValue([]);
+
+      await repository.findAll({ toDate });
+
+      expect(mockPrisma.order.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            createdAt: expect.objectContaining({ lte: toDate }),
+          }),
+        })
+      );
+    });
+
+    it('should filter by date range', async () => {
+      const fromDate = new Date('2024-01-01');
+      const toDate = new Date('2024-12-31');
+      mockPrisma.order.findMany.mockResolvedValue([]);
+
+      await repository.findAll({ fromDate, toDate });
+
+      expect(mockPrisma.order.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            createdAt: expect.objectContaining({
+              gte: fromDate,
+              lte: toDate,
+            }),
+          }),
+        })
+      );
+    });
+  });
+
+  describe('findAll with sorting', () => {
+    it('should sort by createdAt ascending', async () => {
+      mockPrisma.order.findMany.mockResolvedValue([]);
+
+      await repository.findAll({ sortBy: 'createdAt', sortOrder: 'asc' });
+
+      expect(mockPrisma.order.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderBy: { createdAt: 'asc' },
+        })
+      );
+    });
+
+    it('should sort by updatedAt descending', async () => {
+      mockPrisma.order.findMany.mockResolvedValue([]);
+
+      await repository.findAll({ sortBy: 'updatedAt', sortOrder: 'desc' });
+
+      expect(mockPrisma.order.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderBy: { updatedAt: 'desc' },
+        })
+      );
+    });
+  });
+
+  describe('count with filters', () => {
+    it('should count with status filter', async () => {
+      mockPrisma.order.count.mockResolvedValue(5);
+
+      await repository.count({
+        status: new OrderStatus(OrderStatusEnum.PENDING),
+      });
+
+      expect(mockPrisma.order.count).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: OrderStatusEnum.PENDING,
+          }),
+        })
+      );
+    });
+
+    it('should count with customer name filter', async () => {
+      mockPrisma.order.count.mockResolvedValue(3);
+
+      await repository.count({ customerName: 'John' });
+
+      expect(mockPrisma.order.count).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            customerName: expect.objectContaining({ contains: 'John' }),
+          }),
+        })
+      );
+    });
+  });
+
+  describe('findAll with all filter combinations', () => {
+    it('should apply only customerName filter', async () => {
+      mockPrisma.order.findMany.mockResolvedValue([]);
+
+      await repository.findAll({ customerName: 'Alice' });
+
+      expect(mockPrisma.order.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            customerName: expect.objectContaining({ contains: 'Alice' }),
+          }),
+        })
+      );
+    });
+
+    it('should apply only status filter', async () => {
+      const { OrderStatus, OrderStatusEnum } = require('../../../../../src/domain/value-objects/OrderStatus');
+      
+      mockPrisma.order.findMany.mockResolvedValue([]);
+
+      await repository.findAll({
+        status: new OrderStatus(OrderStatusEnum.PREPARING),
+      });
+
+      expect(mockPrisma.order.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: OrderStatusEnum.PREPARING,
+          }),
+        })
+      );
+    });
+
+    it('should apply pagination without other filters', async () => {
+      mockPrisma.order.findMany.mockResolvedValue([]);
+
+      await repository.findAll({
+        limit: 5,
+        offset: 10,
+      });
+
+      expect(mockPrisma.order.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          take: 5,
+          skip: 10,
+        })
+      );
+    });
+
+    it('should apply only limit without offset', async () => {
+      mockPrisma.order.findMany.mockResolvedValue([]);
+
+      await repository.findAll({ limit: 25 });
+
+      expect(mockPrisma.order.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          take: 25,
+        })
+      );
+    });
+
+    it('should apply only offset without limit', async () => {
+      mockPrisma.order.findMany.mockResolvedValue([]);
+
+      await repository.findAll({ offset: 5 });
+
+      expect(mockPrisma.order.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          skip: 5,
+        })
+      );
+    });
+
+    it('should apply combined date and status filters', async () => {
+      const { OrderStatus, OrderStatusEnum } = require('../../../../../src/domain/value-objects/OrderStatus');
+      const fromDate = new Date('2024-01-01');
+      const toDate = new Date('2024-12-31');
+
+      mockPrisma.order.findMany.mockResolvedValue([]);
+
+      await repository.findAll({
+        status: new OrderStatus(OrderStatusEnum.DELIVERED),
+        fromDate,
+        toDate,
+      });
+
+      expect(mockPrisma.order.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: OrderStatusEnum.DELIVERED,
+            createdAt: expect.objectContaining({
+              gte: fromDate,
+              lte: toDate,
+            }),
+          }),
+        })
+      );
+    });
+
+    it('should apply all possible filters together', async () => {
+      const { OrderStatus, OrderStatusEnum } = require('../../../../../src/domain/value-objects/OrderStatus');
+      
+      mockPrisma.order.findMany.mockResolvedValue([]);
+
+      await repository.findAll({
+        status: new OrderStatus(OrderStatusEnum.PENDING),
+        customerName: 'Bob',
+        fromDate: new Date('2024-06-01'),
+        toDate: new Date('2024-06-30'),
+        sortBy: 'updatedAt',
+        sortOrder: 'asc',
+        limit: 15,
+        offset: 5,
+      });
+
+      expect(mockPrisma.order.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: OrderStatusEnum.PENDING,
+            customerName: expect.objectContaining({ contains: 'Bob' }),
+          }),
+          orderBy: { updatedAt: 'asc' },
+          take: 15,
+          skip: 5,
+        })
+      );
+    });
+  });
+
+  describe('count with all filter combinations', () => {
+    it('should count with only status', async () => {
+      const { OrderStatus, OrderStatusEnum } = require('../../../../../src/domain/value-objects/OrderStatus');
+      
+      mockPrisma.order.count.mockResolvedValue(10);
+
+      await repository.count({
+        status: new OrderStatus(OrderStatusEnum.READY),
+      });
+
+      expect(mockPrisma.order.count).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: OrderStatusEnum.READY,
+          }),
+        })
+      );
+    });
+
+    it('should count with only customerName', async () => {
+      mockPrisma.order.count.mockResolvedValue(7);
+
+      await repository.count({ customerName: 'Charlie' });
+
+      expect(mockPrisma.order.count).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            customerName: expect.objectContaining({ contains: 'Charlie' }),
+          }),
+        })
+      );
+    });
+
+    it('should count with only fromDate', async () => {
+      const fromDate = new Date('2024-03-01');
+      
+      mockPrisma.order.count.mockResolvedValue(12);
+
+      await repository.count({ fromDate });
+
+      expect(mockPrisma.order.count).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            createdAt: expect.objectContaining({ gte: fromDate }),
+          }),
+        })
+      );
+    });
+
+    it('should count with only toDate', async () => {
+      const toDate = new Date('2024-09-30');
+      
+      mockPrisma.order.count.mockResolvedValue(20);
+
+      await repository.count({ toDate });
+
+      expect(mockPrisma.order.count).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            createdAt: expect.objectContaining({ lte: toDate }),
+          }),
+        })
+      );
+    });
+  });
+
+
+  describe('edge cases for branch coverage', () => {
+    it('should handle findAll with only page parameter', async () => {
+      mockPrisma.order.findMany.mockResolvedValue([]);
+
+      await repository.findAll({ page: 2 });
+
+      expect(mockPrisma.order.findMany).toHaveBeenCalled();
+    });
+
+    it('should handle findAll with only offset parameter', async () => {
+      mockPrisma.order.findMany.mockResolvedValue([]);
+
+      await repository.findAll({ offset: 5 });
+
+      expect(mockPrisma.order.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          skip: 5,
+        })
+      );
+    });
+
+    it('should handle findAll with only limit parameter', async () => {
+      mockPrisma.order.findMany.mockResolvedValue([]);
+
+      await repository.findAll({ limit: 25 });
+
+      expect(mockPrisma.order.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          take: 25,
+        })
+      );
+    });
+
+    it('should use default sortOrder when only sortBy provided', async () => {
+      mockPrisma.order.findMany.mockResolvedValue([]);
+
+      await repository.findAll({ sortBy: 'updatedAt' });
+
+      expect(mockPrisma.order.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderBy: { updatedAt: 'desc' },
+        })
+      );
+    });
+
+    it('should use default sortBy when only sortOrder provided', async () => {
+      mockPrisma.order.findMany.mockResolvedValue([]);
+
+      await repository.findAll({ sortOrder: 'asc' });
+
+      expect(mockPrisma.order.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderBy: { createdAt: 'asc' },
+        })
+      );
+    });
+  });
+});

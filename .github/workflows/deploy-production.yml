@@ -1,0 +1,240 @@
+name: Deploy Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy-orders:
+        description: 'Deploy Orders Service'
+        type: boolean
+        default: false
+      deploy-kitchen:
+        description: 'Deploy Kitchen Service'
+        type: boolean
+        default: false
+      deploy-warehouse:
+        description: 'Deploy Warehouse Service'
+        type: boolean
+        default: false
+      deploy-market:
+        description: 'Deploy Market Service'
+        type: boolean
+        default: false
+      deploy-frontend:
+        description: 'Deploy Frontend'
+        type: boolean
+        default: false
+
+jobs:
+  approval:
+    name: Deployment Approval
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Wait for approval
+        run: |
+          echo "🚀 Production deployment approved"
+          echo "Services to deploy:"
+          echo "- Orders: ${{ github.event.inputs.deploy-orders }}"
+          echo "- Kitchen: ${{ github.event.inputs.deploy-kitchen }}"
+          echo "- Warehouse: ${{ github.event.inputs.deploy-warehouse }}"
+          echo "- Market: ${{ github.event.inputs.deploy-market }}"
+          echo "- Frontend: ${{ github.event.inputs.deploy-frontend }}"
+
+  deploy-orders:
+    name: Deploy Orders to Production
+    needs: approval
+    if: github.event.inputs.deploy-orders == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel Environment Information
+        working-directory: ./services/orders
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build Project Artifacts
+        working-directory: ./services/orders
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy to Production
+        id: deploy
+        working-directory: ./services/orders
+        run: |
+          url=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$url" >> $GITHUB_OUTPUT
+
+      - name: Wait for deployment
+        run: sleep 15
+
+      - name: Health Check
+        run: |
+          echo "Running health check..."
+          response=$(curl -s -o /dev/null -w "%{http_code}" ${{ steps.deploy.outputs.url }}/api)
+          if [ $response -eq 200 ]; then
+            echo "✅ Health check passed (HTTP $response)"
+          else
+            echo "❌ Health check failed (HTTP $response)"
+            exit 1
+          fi
+
+      - name: Deployment Summary
+        run: |
+          echo "### Orders Service Deployed 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Production URL:** ${{ steps.deploy.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployed by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Health check:** ✅ Passed" >> $GITHUB_STEP_SUMMARY
+
+  deploy-kitchen:
+    name: Deploy Kitchen to Production
+    needs: approval
+    if: github.event.inputs.deploy-kitchen == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel Environment Information
+        working-directory: ./services/kitchen
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build Project Artifacts
+        working-directory: ./services/kitchen
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy to Production
+        id: deploy
+        working-directory: ./services/kitchen
+        run: |
+          url=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$url" >> $GITHUB_OUTPUT
+
+      - name: Wait for deployment
+        run: sleep 15
+
+      - name: Health Check
+        run: |
+          echo "Running health check..."
+          response=$(curl -s -o /dev/null -w "%{http_code}" ${{ steps.deploy.outputs.url }}/api)
+          if [ $response -eq 200 ]; then
+            echo "✅ Health check passed (HTTP $response)"
+          else
+            echo "❌ Health check failed (HTTP $response)"
+            exit 1
+          fi
+
+      - name: Deployment Summary
+        run: |
+          echo "### Kitchen Service Deployed 🍳" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Production URL:** ${{ steps.deploy.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployed by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Health check:** ✅ Passed" >> $GITHUB_STEP_SUMMARY
+
+  notify-success:
+    name: Notify Deployment Success
+    if: success()
+    needs: [deploy-orders, deploy-kitchen]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Slack notification
+        if: ${{ secrets.SLACK_WEBHOOK_URL != '' }}
+        run: |
+          curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "text": "✅ Production Deployment Successful",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "🚀 Production Deployment"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Status:* Success ✅"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Deployed by:* ${{ github.actor }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Orders:* ${{ github.event.inputs.deploy-orders }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Kitchen:* ${{ github.event.inputs.deploy-kitchen }}"
+                    }
+                  ]
+                }
+              ]
+            }'
+
+  notify-failure:
+    name: Notify Deployment Failure
+    if: failure()
+    needs: [deploy-orders, deploy-kitchen]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Slack notification
+        if: ${{ secrets.SLACK_WEBHOOK_URL != '' }}
+        run: |
+          curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "text": "❌ Production Deployment Failed",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "🚨 Production Deployment Failed"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Status:* Failed ❌"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Deployed by:* ${{ github.actor }}"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "<https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Workflow Run>"
+                  }
+                }
+              ]
+            }'

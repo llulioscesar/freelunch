@@ -1,0 +1,12 @@
+dist
+node_modules
+coverage
+*.js
+__tests__
+prisma
+.vercel
+.next
+.turbo
+api
+docs
+scripts

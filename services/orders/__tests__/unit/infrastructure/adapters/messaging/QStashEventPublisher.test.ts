@@ -1,0 +1,124 @@
+/**
+ * Unit Tests: QStashEventPublisher (with mocks)
+ */
+import { QStashEventPublisher } from '../../../../../src/infrastructure/adapters/messaging/QStashEventPublisher';
+import { OrderCreatedEvent } from '../../../../../src/domain/events/OrderCreatedEvent';
+import { OrderCompletedEvent } from '../../../../../src/domain/events/OrderCompletedEvent';
+
+// Mock QStash client
+const mockPublishJSON = jest.fn();
+jest.mock('@upstash/qstash', () => ({
+  Client: jest.fn().mockImplementation(() => ({
+    publishJSON: mockPublishJSON,
+  })),
+}));
+
+describe('QStashEventPublisher (Unit with Mocks)', () => {
+  let publisher: QStashEventPublisher;
+  const originalEnv = process.env;
+
+  beforeAll(() => {
+    // Mock environment variables
+    process.env.QSTASH_TOKEN = 'mock-token';
+    process.env.KITCHEN_SERVICE_URL = 'http://localhost:3001';
+  });
+
+  afterAll(() => {
+    process.env = originalEnv;
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    publisher = new QStashEventPublisher();
+  });
+
+  describe('constructor', () => {
+    it('should initialize with empty token when QSTASH_TOKEN not set', () => {
+      delete process.env.QSTASH_TOKEN;
+      const newPublisher = new QStashEventPublisher();
+
+      expect(newPublisher).toBeDefined();
+
+      // Restore env
+      process.env.QSTASH_TOKEN = 'mock-token';
+    });
+  });
+
+  describe('publish', () => {
+    it('should publish OrderCreatedEvent to kitchen service', async () => {
+      const event = new OrderCreatedEvent('ORD-123-ABC', new Date(), 5);
+      mockPublishJSON.mockResolvedValue({ messageId: 'msg-123' });
+
+      await publisher.publish(event);
+
+      expect(mockPublishJSON).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: 'http://localhost:3001/api/prepare',
+          body: expect.objectContaining({
+            orderId: 'ORD-123-ABC',
+          }),
+          retries: 3,
+          delay: 0,
+        })
+      );
+    });
+
+    it('should skip publishing when kitchen service URL is not configured', async () => {
+      process.env.KITCHEN_SERVICE_URL = '';
+      const newPublisher = new QStashEventPublisher();
+      const event = new OrderCreatedEvent('ORD-123-ABC', new Date(), 5);
+
+      await newPublisher.publish(event);
+
+      expect(mockPublishJSON).not.toHaveBeenCalled();
+
+      // Restore env
+      process.env.KITCHEN_SERVICE_URL = 'http://localhost:3001';
+    });
+
+    it('should handle other event types gracefully', async () => {
+      const event = new OrderCompletedEvent('ORD-123-ABC', new Date(), 15, 5);
+
+      await publisher.publish(event);
+
+      // Should not throw, but won't publish since not OrderCreatedEvent
+      expect(mockPublishJSON).not.toHaveBeenCalled();
+    });
+
+    it('should handle publish errors', async () => {
+      const event = new OrderCreatedEvent('ORD-123-ABC', new Date(), 5);
+      mockPublishJSON.mockRejectedValue(new Error('QStash error'));
+
+      await expect(publisher.publish(event)).rejects.toThrow('QStash error');
+    });
+  });
+
+  describe('publishBatch', () => {
+    it('should publish multiple events', async () => {
+      const events = [
+        new OrderCreatedEvent('ORD-1-ABC', new Date(), 2),
+        new OrderCreatedEvent('ORD-2-DEF', new Date(), 3),
+      ];
+      mockPublishJSON.mockResolvedValue({ messageId: 'msg-123' });
+
+      await publisher.publishBatch(events);
+
+      expect(mockPublishJSON).toHaveBeenCalledTimes(2);
+    });
+
+    it('should handle partial failures gracefully', async () => {
+      const events = [
+        new OrderCreatedEvent('ORD-1-ABC', new Date(), 2),
+        new OrderCreatedEvent('ORD-2-DEF', new Date(), 3),
+      ];
+      mockPublishJSON
+        .mockResolvedValueOnce({ messageId: 'msg-123' })
+        .mockRejectedValueOnce(new Error('QStash error'));
+
+      // Should not throw, uses Promise.allSettled
+      await publisher.publishBatch(events);
+
+      expect(mockPublishJSON).toHaveBeenCalledTimes(2);
+    });
+  });
+});
