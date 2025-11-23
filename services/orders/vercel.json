@@ -1,31 +1,8 @@
 {
-  "functions": {
-    "api/**/*.ts": {
-      "maxDuration": 10,
-      "memory": 512
-    },
-    "api/workers/*.ts": {
-      "maxDuration": 60,
-      "memory": 1024
-    }
-  },
   "rewrites": [
     {
-      "source": "/",
-      "destination": "/src/presentation/api"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/src/presentation/api/$1"
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
     }
-  ],
-  "env": {
-    "SERVICE_NAME": "orders-service"
-  },
-  "git": {
-    "deploymentEnabled": {
-      "main": true,
-      "test": true
-    }
-  }
+  ]
 }
