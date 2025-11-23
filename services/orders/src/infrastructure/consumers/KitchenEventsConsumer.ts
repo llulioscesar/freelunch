@@ -52,13 +52,19 @@ export class KitchenEventsConsumer {
    */
   async initialize(): Promise<void> {
     try {
-      await this.redis.xgroup(
-        'CREATE',
-        this.streamName,
-        this.consumerGroup,
-        '$', // Start from new messages
-        'MKSTREAM' // Create stream if doesn't exist
-      );
+      // First, ensure stream exists by adding a dummy entry if needed
+      try {
+        await this.redis.xadd(
+          this.streamName,
+          '*',
+          { initialized: 'true', timestamp: new Date().toISOString() }
+        );
+      } catch (error) {
+        // Stream might already exist, ignore
+      }
+
+      // Now create consumer group
+      await this.redis.xgroup('CREATE', this.streamName, this.consumerGroup, '$');
 
       logger.info('Consumer group created', {
         streamName: this.streamName,
