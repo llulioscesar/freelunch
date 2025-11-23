@@ -3,6 +3,22 @@
  * Presentation layer for service health check
  */
 import { VercelRequest, VercelResponse } from '@vercel/node';
+import { HealthCheckService } from '../../application/services/HealthCheckService';
+import { SystemHealthChecker } from '../../infrastructure/adapters/health/SystemHealthChecker';
+
+// Singleton instance for health checker
+let healthChecker: SystemHealthChecker | null = null;
+let healthCheckService: HealthCheckService | null = null;
+
+function getHealthCheckService(): HealthCheckService {
+  if (!healthChecker) {
+    healthChecker = new SystemHealthChecker();
+  }
+  if (!healthCheckService) {
+    healthCheckService = new HealthCheckService(healthChecker);
+  }
+  return healthCheckService;
+}
 
 export default async function handler(
   req: VercelRequest,
@@ -13,14 +29,23 @@ export default async function handler(
   }
 
   try {
-    // TODO: Add actual health checks (DB connection, dependencies, etc.)
+    const service = getHealthCheckService();
+    const healthResult = await service.performHealthCheck();
 
-    return res.status(200).json({
+    // Determine HTTP status code based on health status
+    const statusCode =
+      healthResult.status === 'healthy' ? 200 :
+      healthResult.status === 'degraded' ? 200 :
+      503;
+
+    return res.status(statusCode).json({
       service: 'orders-service',
-      status: 'healthy',
-      version: '2.0.0', // Updated for hexagonal architecture
+      status: healthResult.status,
+      version: healthResult.version,
       architecture: 'hexagonal',
-      timestamp: new Date().toISOString(),
+      timestamp: healthResult.timestamp,
+      uptime: healthResult.uptime,
+      checks: healthResult.checks,
       endpoints: [
         'POST /api/create - Create new order',
         'GET /api/list - List all orders',
@@ -30,16 +55,16 @@ export default async function handler(
       layers: {
         domain: 'Ready',
         application: 'Ready',
-        infrastructure: 'Ready',
+        infrastructure: healthResult.checks.database.status === 'up' ? 'Ready' : 'Degraded',
         presentation: 'Ready',
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Health check failed:', error);
     return res.status(503).json({
       service: 'orders-service',
       status: 'unhealthy',
-      error: 'Service unavailable',
+      error: error.message || 'Service unavailable',
       timestamp: new Date().toISOString(),
     });
   }
