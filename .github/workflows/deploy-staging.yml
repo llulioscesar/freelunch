@@ -36,6 +36,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.workflow_run.head_branch }}
           fetch-depth: 0
 
       - name: Detect changed services
@@ -44,7 +45,7 @@ jobs:
         with:
           list-files: shell
           token: ${{ github.token }}
-          base: ${{ github.event.before }}
+          base: ${{ github.event.workflow_run.head_sha }}~1
           filters: |
             orders:
               - 'services/orders/**'

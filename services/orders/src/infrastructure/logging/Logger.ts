@@ -48,7 +48,9 @@ export class Logger {
   private constructor() {
     this.serviceName = process.env.SERVICE_NAME || 'orders-service';
 
-    const isDevelopment = process.env.NODE_ENV !== 'production';
+    // Detect if running in serverless/production environment
+    const isVercel = process.env.VERCEL === '1';
+    const isProduction = process.env.NODE_ENV === 'production' || isVercel;
     const logLevel = (process.env.LOG_LEVEL || 'info') as LogLevel;
 
     this.logger = pino({
@@ -65,8 +67,8 @@ export class Logger {
       // Timestamp format
       timestamp: () => `,"timestamp":"${new Date().toISOString()}"`,
 
-      // Pretty print in development
-      transport: isDevelopment
+      // Pretty print only in local development (not in Vercel/production)
+      transport: !isProduction
         ? {
             target: 'pino-pretty',
             options: {
