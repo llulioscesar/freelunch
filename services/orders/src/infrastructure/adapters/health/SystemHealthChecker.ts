@@ -4,7 +4,8 @@
  * Implements health checks for infrastructure components
  */
 import { PrismaClient } from '@prisma/client';
-import { Client } from '@upstash/qstash';
+import { Redis } from '@upstash/redis';
+import { RedisClient } from '../cache/RedisClient';
 import {
   HealthChecker,
   CheckStatus,
@@ -12,15 +13,13 @@ import {
 
 export class SystemHealthChecker implements HealthChecker {
   private prisma: PrismaClient;
-  private qstashClient: Client | null;
+  private redis: Redis | null;
 
   constructor() {
     this.prisma = new PrismaClient();
 
-    // Only initialize QStash if token is available
-    this.qstashClient = process.env.QSTASH_TOKEN
-      ? new Client({ token: process.env.QSTASH_TOKEN })
-      : null;
+    // Only initialize Redis if configured
+    this.redis = RedisClient.isConfigured() ? RedisClient.getInstance() : null;
   }
 
   async checkDatabase(): Promise<CheckStatus> {
@@ -60,36 +59,49 @@ export class SystemHealthChecker implements HealthChecker {
     const startTime = Date.now();
 
     try {
-      // Check if QStash token is configured
-      if (!this.qstashClient) {
+      // Check if Redis is configured
+      if (!this.redis) {
         return {
           status: 'degraded',
-          message: 'QStash not configured (running in test mode)',
+          message: 'Redis not configured (events disabled)',
           responseTime: Date.now() - startTime,
           details: {
-            provider: 'QStash',
+            provider: 'Redis Streams',
             configured: false,
           },
         };
       }
 
-      // For QStash, we just verify the client is initialized
-      // Actual connectivity check would require making a test publish
+      // Test Redis connectivity with PING
+      const pingResult = await this.redis.ping();
       const responseTime = Date.now() - startTime;
 
+      if (pingResult === 'PONG') {
+        return {
+          status: 'up',
+          message: 'Redis Streams ready for events',
+          responseTime,
+          details: {
+            provider: 'Redis Streams',
+            configured: true,
+            latency: `${responseTime}ms`,
+          },
+        };
+      }
+
       return {
-        status: 'up',
-        message: 'Event publisher configured',
+        status: 'down',
+        message: 'Redis not responding',
         responseTime,
         details: {
-          provider: 'QStash',
-          configured: true,
+          provider: 'Redis Streams',
+          pingResult,
         },
       };
     } catch (error: any) {
       return {
         status: 'down',
-        message: 'Event publisher unavailable',
+        message: 'Redis connection failed',
         responseTime: Date.now() - startTime,
         details: {
           error: error.message,
@@ -104,7 +116,8 @@ export class SystemHealthChecker implements HealthChecker {
     try {
       const requiredEnvVars = ['DATABASE_URL'];
       const optionalEnvVars = [
-        'QSTASH_TOKEN',
+        'REDIS_URL',
+        'REDIS_TOKEN',
         'KITCHEN_SERVICE_URL',
         'WAREHOUSE_SERVICE_URL',
         'MARKET_SERVICE_URL',
@@ -149,7 +162,7 @@ export class SystemHealthChecker implements HealthChecker {
           environment: process.env.NODE_ENV || 'development',
           configured: {
             database: !!process.env.DATABASE_URL,
-            qstash: !!process.env.QSTASH_TOKEN,
+            redis: RedisClient.isConfigured(),
             services: {
               kitchen: !!process.env.KITCHEN_SERVICE_URL,
               warehouse: !!process.env.WAREHOUSE_SERVICE_URL,

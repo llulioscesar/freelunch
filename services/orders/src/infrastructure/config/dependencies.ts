@@ -6,8 +6,10 @@ import { PrismaClient } from '@prisma/client';
 import { OrderRepository } from '../../domain/repositories/OrderRepository';
 import { EventPublisher } from '../../application/ports/out/EventPublisher';
 import { PrismaOrderRepository } from '../adapters/persistence/PrismaOrderRepository';
+import { CachedOrderRepository } from '../adapters/persistence/CachedOrderRepository';
 import { InMemoryOrderRepository } from '../adapters/persistence/InMemoryOrderRepository';
-import { QStashEventPublisher } from '../adapters/messaging/QStashEventPublisher';
+import { RedisStreamEventPublisher } from '../adapters/messaging/RedisStreamEventPublisher';
+import { RedisClient } from '../cache/RedisClient';
 import { CreateOrderUseCase } from '../../application/use-cases/CreateOrderUseCase';
 import { GetOrderStatusUseCase } from '../../application/use-cases/GetOrderStatusUseCase';
 import { ListOrdersUseCase } from '../../application/use-cases/ListOrdersUseCase';
@@ -31,19 +33,37 @@ export class DependencyContainer {
     const isProd = process.env.NODE_ENV === 'production';
     const isTest = process.env.NODE_ENV === 'test';
 
-    // Repository
+    // Repository with Redis caching
     let orderRepository: OrderRepository;
     if (isTest) {
+      // Use in-memory repository for tests (no external dependencies)
       orderRepository = new InMemoryOrderRepository();
     } else {
       const prismaClient = new PrismaClient({
         log: isProd ? ['error'] : ['query', 'error', 'warn'],
       });
-      orderRepository = new PrismaOrderRepository(prismaClient);
+      const baseRepository = new PrismaOrderRepository(prismaClient);
+
+      // Wrap with cache if Redis is configured
+      if (RedisClient.isConfigured()) {
+        orderRepository = new CachedOrderRepository(baseRepository);
+        console.log('✅ Repository: Prisma + Redis Cache');
+      } else {
+        orderRepository = baseRepository;
+        console.log('⚠️  Repository: Prisma only (Redis not configured)');
+      }
     }
 
-    // Event Publisher
-    const eventPublisher = new QStashEventPublisher();
+    // Event Publisher with Redis Streams
+    let eventPublisher: EventPublisher;
+    if (isTest || !RedisClient.isConfigured()) {
+      // Fallback to no-op or in-memory for tests
+      eventPublisher = new RedisStreamEventPublisher(); // Will throw if not configured
+      console.log('⚠️  Event Publisher: Redis Streams (may fail if not configured)');
+    } else {
+      eventPublisher = new RedisStreamEventPublisher();
+      console.log('✅ Event Publisher: Redis Streams');
+    }
 
     // Use Cases
     const createOrderUseCase = new CreateOrderUseCase(
