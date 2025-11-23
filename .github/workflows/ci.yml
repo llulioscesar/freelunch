@@ -173,9 +173,22 @@ jobs:
   ci-success:
     name: CI Success
     if: always()
-    needs: [lint-orders, test-orders, lint-kitchen, test-kitchen]
+    needs: [detect-changes, lint-orders, test-orders, lint-kitchen, test-kitchen]
     runs-on: ubuntu-latest
     steps:
+      - name: Save changed services for deployment
+        run: |
+          echo "orders=${{ needs.detect-changes.outputs.orders }}" > changed-services.txt
+          echo "kitchen=${{ needs.detect-changes.outputs.kitchen }}" >> changed-services.txt
+          cat changed-services.txt
+
+      - name: Upload changed services
+        uses: actions/upload-artifact@v4
+        with:
+          name: changed-services-${{ github.sha }}
+          path: changed-services.txt
+          retention-days: 1
+
       - name: Check all jobs
         run: |
           if [[ "${{ needs.lint-orders.result }}" == "failure" ]] || \
