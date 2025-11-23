@@ -1,14 +1,12 @@
 {
   "functions": {
-    "src/presentation/api/*.ts": {
+    "api/**/*.ts": {
       "maxDuration": 10,
-      "memory": 512,
-      "runtime": "nodejs20.x"
+      "memory": 512
     },
     "api/workers/*.ts": {
       "maxDuration": 60,
-      "memory": 1024,
-      "runtime": "nodejs20.x"
+      "memory": 1024
     }
   },
   "rewrites": [
