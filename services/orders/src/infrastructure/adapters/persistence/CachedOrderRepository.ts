@@ -145,7 +145,7 @@ export class CachedOrderRepository implements OrderRepository {
       const cached = await this.redis.get(cacheKey);
       if (cached !== null) {
         console.log(`✅ Cache HIT (count): ${cacheKey}`);
-        return cached;
+        return Number(cached);
       }
     } catch (error) {
       console.error('Cache read error:', error);

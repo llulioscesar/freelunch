@@ -110,8 +110,17 @@ npm run db:studio
 # Ejecutar tests
 npm test
 
+# Coverage
+npm run test:coverage
+
 # Linting
 npm run lint
+
+# Type check
+npm run typecheck
+
+# Verificar todo antes de push (lint + typecheck + tests + build)
+npm run verify
 ```
 
 ## 📡 API Endpoints
