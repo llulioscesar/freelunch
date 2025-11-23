@@ -118,7 +118,10 @@ describe('Order Entity', () => {
 
     it('markAsReady should update status to READY', () => {
       const order = new Order(orderId, quantity, customerInfo);
-      transitionToReady(order);
+      order.updateStatus(OrderStatusEnum.PREPARING);
+      order.updateStatus(OrderStatusEnum.INGREDIENTS_REQUESTED);
+      order.updateStatus(OrderStatusEnum.COOKING);
+      order.markAsReady();
 
       expect(order.getStatus().getValue()).toBe(OrderStatusEnum.READY);
     });

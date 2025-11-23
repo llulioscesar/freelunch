@@ -2,12 +2,13 @@
  * Unit Tests: MetricsMiddleware (with mocks)
  */
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { withMetrics } from '../../../../src/infrastructure/metrics/MetricsMiddleware';
+import { withMetrics, measureAsync, measure } from '../../../../src/infrastructure/metrics/MetricsMiddleware';
 
 // Mock metrics service
 jest.mock('../../../../src/infrastructure/metrics/MetricsService', () => ({
   metricsService: {
     recordHttpRequest: jest.fn(),
+    recordDatabaseQuery: jest.fn(),
   },
 }));
 
@@ -164,5 +165,102 @@ describe('MetricsMiddleware (Unit with Mocks)', () => {
       200,
       expect.any(Number)
     );
+  });
+});
+
+describe('measureAsync', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should record metrics for successful async operations', async () => {
+    const operation = 'findUser';
+    const asyncFn = jest.fn().mockResolvedValue({ id: '123' });
+
+    const result = await measureAsync(operation, asyncFn);
+
+    expect(result).toEqual({ id: '123' });
+    expect(metricsService.recordDatabaseQuery).toHaveBeenCalledWith(
+      operation,
+      expect.any(Number),
+      false
+    );
+  });
+
+  it('should record metrics for failed async operations', async () => {
+    const operation = 'findUser';
+    const asyncFn = jest.fn().mockRejectedValue(new Error('DB error'));
+
+    await expect(measureAsync(operation, asyncFn)).rejects.toThrow('DB error');
+
+    expect(metricsService.recordDatabaseQuery).toHaveBeenCalledWith(
+      operation,
+      expect.any(Number),
+      true
+    );
+  });
+});
+
+describe('measure', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should record metrics for successful sync operations', () => {
+    const operation = 'validateData';
+    const syncFn = jest.fn().mockReturnValue({ valid: true });
+
+    const result = measure(operation, syncFn);
+
+    expect(result).toEqual({ valid: true });
+    expect(metricsService.recordDatabaseQuery).toHaveBeenCalledWith(
+      operation,
+      expect.any(Number),
+      false
+    );
+  });
+
+  it('should record metrics for failed sync operations', () => {
+    const operation = 'validateData';
+    const syncFn = jest.fn().mockImplementation(() => {
+      throw new Error('Validation error');
+    });
+
+    expect(() => measure(operation, syncFn)).toThrow('Validation error');
+
+    expect(metricsService.recordDatabaseQuery).toHaveBeenCalledWith(
+      operation,
+      expect.any(Number),
+      true
+    );
+  });
+});
+
+describe('getEndpointName (via withMetrics)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should handle malformed URLs by falling back to split', async () => {
+    const mockReq: Partial<VercelRequest> = {
+      method: 'GET',
+      url: 'not-a-valid-url?with=params',
+    };
+
+    const mockRes: Partial<VercelResponse> = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn().mockReturnThis(),
+      send: jest.fn().mockReturnThis(),
+      writableEnded: false,
+    };
+
+    const mockHandler = jest.fn().mockResolvedValue(undefined);
+    const wrappedHandler = withMetrics(mockHandler);
+
+    await wrappedHandler(mockReq as VercelRequest, mockRes as VercelResponse);
+    (mockRes.json as jest.Mock)({ success: true });
+
+    // Should still record metrics even with malformed URL
+    expect(metricsService.recordHttpRequest).toHaveBeenCalled();
   });
 });

@@ -97,6 +97,28 @@ describe('UpdateOrderItemStatusUseCase', () => {
       expect(mockOrderRepository.update).toHaveBeenCalledWith(testOrder);
     });
 
+    it('should not assign when recipeName is missing', async () => {
+      const items = testOrder.getItems();
+      const firstItem = items[0];
+
+      mockOrderRepository.findById.mockResolvedValue(testOrder);
+
+      const dto: UpdateOrderItemStatusDTO = {
+        orderId: testOrder.getId().getValue(),
+        itemId: firstItem.getId().getValue(),
+        status: OrderItemStatus.ASSIGNED,
+        recipeId: 'RCP-002',
+        // recipeName not provided - assignment should not happen
+      };
+
+      const result = await useCase.execute(dto);
+
+      expect(result.success).toBe(true);
+      // Item should remain PENDING since assignment requires both recipeId and recipeName
+      expect(firstItem.getStatus()).toBe(OrderItemStatus.PENDING);
+      expect(firstItem.getRecipeId()).toBeUndefined();
+    });
+
     it('should handle assignment without recipe details', async () => {
       const items = testOrder.getItems();
       const firstItem = items[0];
@@ -306,6 +328,71 @@ describe('UpdateOrderItemStatusUseCase', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('Database error');
+    });
+
+    it('should handle unknown status', async () => {
+      const items = testOrder.getItems();
+      const firstItem = items[0];
+
+      mockOrderRepository.findById.mockResolvedValue(testOrder);
+
+      const dto: UpdateOrderItemStatusDTO = {
+        orderId: testOrder.getId().getValue(),
+        itemId: firstItem.getId().getValue(),
+        status: 'UNKNOWN_STATUS' as any,
+      };
+
+      const result = await useCase.execute(dto);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Unknown status: UNKNOWN_STATUS');
+    });
+
+    it('should handle errors without message property', async () => {
+      const items = testOrder.getItems();
+      const firstItem = items[0];
+      firstItem.assignRecipe('RCP-001', 'Burger');
+
+      mockOrderRepository.findById.mockResolvedValue(testOrder);
+      mockOrderRepository.update.mockRejectedValue({ code: 'UNKNOWN' });
+
+      const dto: UpdateOrderItemStatusDTO = {
+        orderId: testOrder.getId().getValue(),
+        itemId: firstItem.getId().getValue(),
+        status: OrderItemStatus.PREPARING,
+      };
+
+      const result = await useCase.execute(dto);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Failed to update order item status');
+    });
+  });
+
+  describe('metrics recording', () => {
+    it('should record metrics with "unknown" when recipeName is not set', async () => {
+      const items = testOrder.getItems();
+      const firstItem = items[0];
+
+      mockOrderRepository.findById.mockResolvedValue(testOrder);
+
+      // Assign without recipeName
+      firstItem.assignRecipe('RCP-999', undefined as any);
+      firstItem.markAsPreparing();
+      firstItem.markAsIngredientsRequested();
+      firstItem.markAsCooking();
+
+      const dto: UpdateOrderItemStatusDTO = {
+        orderId: testOrder.getId().getValue(),
+        itemId: firstItem.getId().getValue(),
+        status: OrderItemStatus.READY,
+      };
+
+      const result = await useCase.execute(dto);
+
+      expect(result.success).toBe(true);
+      expect(firstItem.getStatus()).toBe(OrderItemStatus.READY);
+      expect(firstItem.getRecipeName()).toBeUndefined();
     });
   });
 

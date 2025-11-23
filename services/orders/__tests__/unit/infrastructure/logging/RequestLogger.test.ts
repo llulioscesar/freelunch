@@ -95,7 +95,7 @@ describe('RequestLogger (Unit with Mocks)', () => {
     );
   });
 
-  it('should handle send method', async () => {
+  it('should handle send method with string body', async () => {
     const wrappedHandler = withLogging(mockHandler);
 
     await wrappedHandler(mockReq as VercelRequest, mockRes as VercelResponse);
@@ -107,7 +107,27 @@ describe('RequestLogger (Unit with Mocks)', () => {
       '/api/test',
       200,
       expect.any(Number),
-      expect.any(Object)
+      expect.objectContaining({
+        responseSize: 11, // 'Hello World'.length
+      })
+    );
+  });
+
+  it('should handle send method with non-string body', async () => {
+    const wrappedHandler = withLogging(mockHandler);
+
+    await wrappedHandler(mockReq as VercelRequest, mockRes as VercelResponse);
+
+    (mockRes.send as jest.Mock)({ message: 'Hello' });
+
+    expect(logger.logResponse).toHaveBeenCalledWith(
+      'GET',
+      '/api/test',
+      200,
+      expect.any(Number),
+      expect.objectContaining({
+        responseSize: expect.any(Number),
+      })
     );
   });
 
@@ -172,5 +192,95 @@ describe('RequestLogger (Unit with Mocks)', () => {
     await wrappedHandler(mockReq as VercelRequest, mockRes as VercelResponse);
 
     expect(mockHandler).toHaveBeenCalledWith(mockReq, mockRes);
+  });
+
+  it('should handle missing method and url', async () => {
+    const mockReqNoMethodUrl: Partial<VercelRequest> = {
+      headers: {
+        'user-agent': 'Jest Test',
+      },
+    };
+
+    const wrappedHandler = withLogging(mockHandler);
+
+    await wrappedHandler(mockReqNoMethodUrl as VercelRequest, mockRes as VercelResponse);
+
+    expect(logger.logRequest).toHaveBeenCalledWith(
+      'UNKNOWN',
+      '/',
+      expect.any(Object)
+    );
+  });
+
+  it('should handle errors with development mode', async () => {
+    const originalEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'development';
+
+    const error = new Error('Handler error');
+    mockHandler.mockRejectedValue(error);
+
+    const wrappedHandler = withLogging(mockHandler);
+
+    await wrappedHandler(mockReq as VercelRequest, mockRes as VercelResponse);
+
+    // Just verify error was logged correctly
+    expect(logger.error).toHaveBeenCalledWith(
+      'Request handler error',
+      error,
+      expect.any(Object)
+    );
+
+    process.env.NODE_ENV = originalEnv;
+  });
+
+  it('should handle errors in production mode', async () => {
+    const originalEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+
+    const error = new Error('Handler error');
+    mockHandler.mockRejectedValue(error);
+
+    const wrappedHandler = withLogging(mockHandler);
+
+    await wrappedHandler(mockReq as VercelRequest, mockRes as VercelResponse);
+
+    // Just verify error was logged
+    expect(logger.error).toHaveBeenCalledWith(
+      'Request handler error',
+      error,
+      expect.any(Object)
+    );
+
+    process.env.NODE_ENV = originalEnv;
+  });
+});
+
+describe('createRequestLogger', () => {
+  beforeEach(() => {
+    // Mock logger.child to return a child logger
+    (logger.child as jest.Mock) = jest.fn().mockReturnValue(logger);
+  });
+
+  it('should create a request-scoped logger', () => {
+    const mockReq: Partial<VercelRequest> = {
+      method: 'POST',
+      url: '/api/orders',
+      headers: {
+        'user-agent': 'Jest Test',
+        'x-forwarded-for': '127.0.0.1',
+      },
+    };
+
+    const { createRequestLogger } = require('../../../../src/infrastructure/logging/RequestLogger');
+    const requestLogger = createRequestLogger(mockReq as VercelRequest);
+
+    expect(requestLogger).toBeDefined();
+    expect(logger.child).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestId: expect.stringContaining('req_'),
+        method: 'POST',
+        path: '/api/orders',
+      })
+    );
   });
 });

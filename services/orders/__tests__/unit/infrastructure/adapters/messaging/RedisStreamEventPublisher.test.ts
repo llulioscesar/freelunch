@@ -136,13 +136,32 @@ describe('RedisStreamEventPublisher (Unit with Mocks)', () => {
 
     it('should not route event when no specialized stream is configured', async () => {
       const event = new OrderCreatedEvent('ORD-123', new Date(), 5);
-      
+
       // Create event without routing config
       jest.spyOn(publisher as any, 'routeEventToSpecializedStream').mockResolvedValue(undefined);
-      
+
       await publisher.publish(event);
 
       expect(mockRedis.xadd).toHaveBeenCalled();
+    });
+
+    it('should handle events without toPrimitives method', async () => {
+      // Create a minimal event without toPrimitives
+      const mockEvent = {
+        eventName: () => 'test.event',
+        occurredOn: new Date(),
+        aggregateId: 'TEST-123',
+      };
+
+      await publisher.publish(mockEvent as any);
+
+      expect(mockRedis.xadd).toHaveBeenCalledWith(
+        'orders:events',
+        '*',
+        expect.objectContaining({
+          eventType: 'test.event',
+        })
+      );
     });
   });
 

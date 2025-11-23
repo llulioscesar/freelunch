@@ -118,6 +118,32 @@ describe('ListOrdersUseCase', () => {
       );
     });
 
+    it('should filter by fromDate', async () => {
+      mockOrderRepository.findAll.mockResolvedValue([]);
+      mockOrderRepository.count.mockResolvedValue(0);
+
+      await useCase.execute({ fromDate: '2025-01-01' });
+
+      expect(mockOrderRepository.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fromDate: new Date('2025-01-01'),
+        })
+      );
+    });
+
+    it('should filter by toDate', async () => {
+      mockOrderRepository.findAll.mockResolvedValue([]);
+      mockOrderRepository.count.mockResolvedValue(0);
+
+      await useCase.execute({ toDate: '2025-12-31' });
+
+      expect(mockOrderRepository.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          toDate: new Date('2025-12-31'),
+        })
+      );
+    });
+
     it('should handle empty results', async () => {
       mockOrderRepository.findAll.mockResolvedValue([]);
       mockOrderRepository.count.mockResolvedValue(0);

@@ -91,5 +91,14 @@ describe('GetOrderStatusUseCase', () => {
       expect(result.success).toBe(false);
       expect(result.error).toBeDefined();
     });
+
+    it('should handle errors without message property', async () => {
+      mockOrderRepository.findById.mockRejectedValue({ code: 'UNKNOWN' });
+
+      const result = await useCase.execute({ orderId: 'ORD-1234567890-ABC123' });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Failed to get order status');
+    });
   });
 });

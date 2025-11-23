@@ -49,4 +49,32 @@ describe('RedisClient - Branch Coverage', () => {
     delete process.env.UPSTASH_REDIS_REST_URL;
     delete process.env.UPSTASH_REDIS_REST_TOKEN;
   });
+
+  it('should throw error when Redis is not configured', () => {
+    delete process.env.REDIS_URL;
+    delete process.env.REDIS_TOKEN;
+    delete process.env.UPSTASH_REDIS_REST_URL;
+    delete process.env.UPSTASH_REDIS_REST_TOKEN;
+
+    expect(() => RedisClient.getInstance()).toThrow('Redis configuration missing');
+
+    // Restore
+    process.env.REDIS_URL = 'redis://mock:6379';
+    process.env.REDIS_TOKEN = 'mock-token';
+  });
+
+  it('should return false from isConfigured when not configured', () => {
+    delete process.env.REDIS_URL;
+    delete process.env.REDIS_TOKEN;
+    delete process.env.UPSTASH_REDIS_REST_URL;
+    delete process.env.UPSTASH_REDIS_REST_TOKEN;
+
+    const result = RedisClient.isConfigured();
+
+    expect(result).toBe(false);
+
+    // Restore
+    process.env.REDIS_URL = 'redis://mock:6379';
+    process.env.REDIS_TOKEN = 'mock-token';
+  });
 });

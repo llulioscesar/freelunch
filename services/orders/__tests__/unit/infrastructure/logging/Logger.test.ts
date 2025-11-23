@@ -117,12 +117,28 @@ describe('Logger', () => {
       expect(mockPinoLogger.info).toHaveBeenCalled();
     });
 
-    it('should log error responses', () => {
+    it('should log error responses (>= 500)', () => {
       logger.logResponse('GET', '/api/orders', 500, 200, {
         requestId: 'req-456',
       });
 
       expect(mockPinoLogger.error).toHaveBeenCalled();
+    });
+
+    it('should log warning responses (>= 400, < 500)', () => {
+      logger.logResponse('GET', '/api/orders', 404, 150, {
+        requestId: 'req-789',
+      });
+
+      expect(mockPinoLogger.warn).toHaveBeenCalled();
+    });
+
+    it('should log info responses (< 400)', () => {
+      logger.logResponse('POST', '/api/orders', 200, 100, {
+        requestId: 'req-999',
+      });
+
+      expect(mockPinoLogger.info).toHaveBeenCalled();
     });
   });
 
@@ -191,6 +207,62 @@ describe('Logger', () => {
 
       expect(childLogger).toBeDefined();
       expect(mockPinoLogger.child).toHaveBeenCalledWith({ requestId: 'req-123' });
+    });
+  });
+
+  describe('logPerformance', () => {
+    it('should log with warn level when duration > 1000ms', () => {
+      logger.logPerformance('slow-operation', 1500, { orderId: '123' });
+
+      expect(mockPinoLogger.warn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          operation: 'slow-operation',
+          duration: 1500,
+          type: 'performance_metric',
+        }),
+        expect.stringContaining('Performance: slow-operation took 1500ms')
+      );
+    });
+
+    it('should log with info level when duration > 500ms and <= 1000ms', () => {
+      logger.logPerformance('medium-operation', 750, { orderId: '123' });
+
+      expect(mockPinoLogger.info).toHaveBeenCalledWith(
+        expect.objectContaining({
+          operation: 'medium-operation',
+          duration: 750,
+          type: 'performance_metric',
+        }),
+        expect.stringContaining('Performance: medium-operation took 750ms')
+      );
+    });
+
+    it('should log with debug level when duration <= 500ms', () => {
+      logger.logPerformance('fast-operation', 200, { orderId: '123' });
+
+      expect(mockPinoLogger.debug).toHaveBeenCalledWith(
+        expect.objectContaining({
+          operation: 'fast-operation',
+          duration: 200,
+          type: 'performance_metric',
+        }),
+        expect.stringContaining('Performance: fast-operation took 200ms')
+      );
+    });
+  });
+
+  describe('logMetric', () => {
+    it('should log business metrics', () => {
+      logger.logMetric('orders.created', 5, { customerId: 'cust-123' });
+
+      expect(mockPinoLogger.info).toHaveBeenCalledWith(
+        expect.objectContaining({
+          metricName: 'orders.created',
+          metricValue: 5,
+          type: 'business_metric',
+        }),
+        'Business Metric'
+      );
     });
   });
 });

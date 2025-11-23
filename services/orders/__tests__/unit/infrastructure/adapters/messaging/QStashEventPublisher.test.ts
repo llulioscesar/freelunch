@@ -32,6 +32,18 @@ describe('QStashEventPublisher (Unit with Mocks)', () => {
     publisher = new QStashEventPublisher();
   });
 
+  describe('constructor', () => {
+    it('should initialize with empty token when QSTASH_TOKEN not set', () => {
+      delete process.env.QSTASH_TOKEN;
+      const newPublisher = new QStashEventPublisher();
+
+      expect(newPublisher).toBeDefined();
+
+      // Restore env
+      process.env.QSTASH_TOKEN = 'mock-token';
+    });
+  });
+
   describe('publish', () => {
     it('should publish OrderCreatedEvent to kitchen service', async () => {
       const event = new OrderCreatedEvent('ORD-123-ABC', new Date(), 5);

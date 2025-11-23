@@ -128,5 +128,21 @@ describe('UpdateOrderStatusUseCase', () => {
       expect(result.success).toBe(false);
       expect(result.error).toBeDefined();
     });
+
+    it('should handle errors without message property', async () => {
+      const orderId = new OrderId('ORD-1234567890-ABC123');
+      const order = new Order(orderId, new Quantity(1), new CustomerInfo('Test'));
+
+      mockOrderRepository.findById.mockResolvedValue(order);
+      mockOrderRepository.update.mockRejectedValue({ code: 'UNKNOWN' });
+
+      const result = await useCase.execute({
+        orderId: orderId.getValue(),
+        status: OrderStatusEnum.PREPARING,
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Failed to update order status');
+    });
   });
 });
