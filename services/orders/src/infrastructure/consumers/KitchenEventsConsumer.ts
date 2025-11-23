@@ -366,6 +366,59 @@ export class KitchenEventsConsumer {
     }
   }
 
+  /**
+   * Process a batch of messages (for serverless cron)
+   * Returns the number of messages processed
+   */
+  async processBatch(maxMessages: number = 10): Promise<number> {
+    try {
+      // Read pending messages for this consumer
+      const messages = await this.redis.xreadgroup(
+        'GROUP',
+        this.consumerGroup,
+        this.consumerId,
+        'COUNT',
+        maxMessages,
+        'STREAMS',
+        this.streamName,
+        '>' // Only new messages
+      );
+
+      if (!messages || messages.length === 0) {
+        logger.debug('No messages to process');
+        return 0;
+      }
+
+      let processedCount = 0;
+
+      // Process each message
+      for (const [streamName, streamMessages] of messages) {
+        for (const [messageId, fields] of streamMessages) {
+          try {
+            await this.processMessage(messageId as string, fields);
+            processedCount++;
+          } catch (error) {
+            logger.error('Failed to process message in batch', error as Error, {
+              messageId,
+              streamName,
+            });
+            // Continue processing other messages even if one fails
+          }
+        }
+      }
+
+      logger.info('Batch processing completed', {
+        processedCount,
+        consumerId: this.consumerId,
+      });
+
+      return processedCount;
+    } catch (error) {
+      logger.error('Batch processing failed', error as Error);
+      return 0;
+    }
+  }
+
   private sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
