@@ -2,7 +2,7 @@
  * Port (Output): Event Publisher
  *
  * Interface for publishing domain events to external message brokers or event buses.
- * This is a port in the Hexagonal Architecture - the adapter (QStashEventPublisher)
+ * This is a port in the Hexagonal Architecture - the adapter (RedisStreamEventPublisher)
  * implements this interface.
  *
  * Following the Dependency Inversion Principle:

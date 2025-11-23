@@ -28,7 +28,6 @@
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
-    "@upstash/qstash": "^2.2.0",
     "@upstash/redis": "^1.28.0",
     "@vercel/kv": "^1.0.1",
     "pino": "^8.17.0",
