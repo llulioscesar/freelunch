@@ -3,8 +3,8 @@
  * Presentation layer for service health check
  */
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { HealthCheckService } from '../../application/services/HealthCheckService';
-import { SystemHealthChecker } from '../../infrastructure/adapters/health/SystemHealthChecker';
+import { HealthCheckService } from '@application/services/HealthCheckService';
+import { SystemHealthChecker } from '@infrastructure/adapters/health/SystemHealthChecker';
 
 // Singleton instance for health checker
 let healthChecker: SystemHealthChecker | null = null;
