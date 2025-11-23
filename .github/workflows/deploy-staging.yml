@@ -1,10 +1,7 @@
 name: Deploy Staging
 
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types:
-      - completed
+  push:
     branches: [test]
 
 permissions:
@@ -15,17 +12,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check-ci:
-    name: Check CI Status
-    runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    steps:
-      - name: CI Passed
-        run: echo "CI workflow passed, proceeding with deployment"
-
   detect-changes:
     name: Detect Changes
-    needs: check-ci
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -44,8 +32,6 @@ jobs:
         with:
           list-files: shell
           token: ${{ github.token }}
-          base: dev
-          ref: test
           filters: |
             orders:
               - 'services/orders/**'
