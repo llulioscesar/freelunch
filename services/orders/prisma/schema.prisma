@@ -10,15 +10,36 @@ datasource db {
 }
 
 model Order {
-  id           String    @id
+  id           String      @id
   quantity     Int
-  customerName String    @default("Anonymous")
+  customerName String      @default("Anonymous")
   notes        String?
   status       String
-  createdAt    DateTime  @default(now())
+  createdAt    DateTime    @default(now())
   completedAt  DateTime?
-  updatedAt    DateTime  @updatedAt
+  updatedAt    DateTime    @updatedAt
+
+  items        OrderItem[]
 
   @@index([status])
   @@index([createdAt])
+}
+
+model OrderItem {
+  id             String    @id
+  orderId        String
+  order          Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  recipeId       String?
+  recipeName     String?
+  status         String    @default("PENDING")
+
+  createdAt      DateTime  @default(now())
+  assignedAt     DateTime?
+  preparedAt     DateTime?
+  deliveredAt    DateTime?
+  failureReason  String?
+
+  @@index([orderId])
+  @@index([status])
 }

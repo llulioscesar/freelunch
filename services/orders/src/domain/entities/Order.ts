@@ -56,7 +56,11 @@ export class Order {
       const event = new OrderCreatedEvent(
         this.id.getValue(),
         this.quantity.getValue(),
-        this.customerInfo.getName()
+        this.customerInfo.getName(),
+        this.items.map(item => ({
+          itemId: item.getId().getValue(),
+          orderId: this.id.getValue(),
+        }))
       );
       this.addDomainEvent(event);
 
@@ -285,12 +289,28 @@ export class Order {
   }
 
   static fromPrimitives(data: any): Order {
-    return new Order(
+    // Reconstruct OrderItems if present
+    const items = data.items
+      ? data.items.map((itemData: any) => OrderItem.fromPrimitives(itemData))
+      : undefined;
+
+    const order = new Order(
       new OrderId(data.id),
       new Quantity(data.quantity),
       new CustomerInfo(data.customerName, data.notes),
       new OrderStatus(data.status as OrderStatusEnum),
-      new Date(data.createdAt)
+      new Date(data.createdAt),
+      items
     );
+
+    // Restore completedAt and updatedAt
+    if (data.completedAt) {
+      (order as any).completedAt = new Date(data.completedAt);
+    }
+    if (data.updatedAt) {
+      (order as any).updatedAt = new Date(data.updatedAt);
+    }
+
+    return order;
   }
 }

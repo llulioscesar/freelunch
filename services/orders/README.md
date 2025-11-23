@@ -57,10 +57,11 @@ src/
 ## 📋 Descripción
 
 Este microservicio maneja:
-- Creación de nuevos pedidos
-- Listado y consulta de pedidos
-- Actualización de estado de pedidos
-- Emisión de eventos para iniciar el flujo de preparación
+- Creación de nuevos pedidos con múltiples platos
+- Tracking individual de cada plato (OrderItem)
+- Listado y consulta de pedidos con progreso en tiempo real
+- Actualización de estado de pedidos basada en eventos
+- Comunicación bidireccional con Kitchen Service via eventos
 
 ## 🚀 Instalación
 
@@ -156,10 +157,64 @@ Content-Type: application/json
 - Notas especiales opcionales
 - Validación de longitud
 
-## 🔄 Eventos de Dominio
+## 🔄 Eventos
 
-- **OrderCreatedEvent**: Se emite al crear un pedido
-- **OrderStatusChangedEvent**: Se emite al cambiar el estado
+### Eventos que EMITE (Publica)
+
+| Evento | Cuándo | Destino | Datos |
+|--------|--------|---------|-------|
+| `ORDER_CREATED` | Al crear un pedido | Kitchen Service | orderId, quantity, items[] |
+| `ORDER_STATUS_CHANGED` | Al cambiar estado | Analytics | orderId, previousStatus, newStatus |
+| `ORDER_COMPLETED` | Cuando todos los platos están listos | Analytics | orderId, completedAt, preparationTime |
+| `ORDER_FAILED` | Cuando algún plato falla | Analytics | orderId, reason |
+
+### Eventos que ESCUCHA (Consume)
+
+| Evento | De | Acción | Stream |
+|--------|-----|--------|--------|
+| `RECIPE_ASSIGNED` | Kitchen Service | Actualiza OrderItem con recipeId | stream:kitchen:responses |
+| `DISH_PREPARING` | Kitchen Service | Marca item como PREPARING | stream:kitchen:responses |
+| `DISH_PREPARED` | Kitchen Service | Marca item como READY | stream:kitchen:responses |
+| `DISH_FAILED` | Kitchen Service | Marca item como FAILED | stream:kitchen:responses |
+
+### Flujo de Eventos
+
+```
+Orders Service                Kitchen Service
+     │                              │
+     ├─ POST /api/create            │
+     │  { quantity: 5 }             │
+     │                              │
+     ├─ Crea 5 OrderItems           │
+     │  (status: PENDING)           │
+     │                              │
+     ├─ Publica ───────────────────>│
+     │  ORDER_CREATED               │
+     │  { orderId, items[] }        │
+     │                              │
+     │                        Selecciona receta
+     │                              │
+     │<──────────────────── Publica │
+     │  RECIPE_ASSIGNED             │
+     │  { itemId, recipeId }        │
+     │                              │
+     ├─ Actualiza OrderItem         │
+     │  (status: ASSIGNED)          │
+     │                              │
+     │<──────────────────── Publica │
+     │  DISH_PREPARED               │
+     │  { itemId }                  │
+     │                              │
+     ├─ Marca item como READY       │
+     │  (progress: 20% → 1/5)       │
+     │                              │
+     ├─ Auto-completa cuando        │
+     │  todos los items listos      │
+     │                              │
+     ├─ Publica ───────────────────>│
+     │  ORDER_COMPLETED             │
+     └─ (status: DELIVERED)         │
+```
 
 ## 🧪 Testing
 
@@ -182,6 +237,50 @@ KITCHEN_SERVICE_URL=       # URL del Kitchen Service
 SERVICE_NAME=orders-service
 NODE_ENV=development
 PORT=3001
+```
+
+## 🔄 Consumer Worker
+
+El servicio incluye un consumer worker que procesa eventos de Kitchen Service.
+
+### Opción A: Vercel Cron (Recomendado para Serverless)
+
+Configurar en `vercel.json`:
+
+```json
+{
+  "crons": [{
+    "path": "/api/workers/kitchen-events",
+    "schedule": "* * * * *"
+  }]
+}
+```
+
+Esto ejecuta el worker cada minuto para procesar eventos pendientes.
+
+### Opción B: Long-Running Process
+
+```bash
+# En desarrollo
+npm run worker:kitchen
+
+# En producción (Docker/PM2)
+node dist/workers/kitchen-consumer.js
+```
+
+### Monitoreo del Consumer
+
+```bash
+# Ver mensajes pendientes
+curl http://localhost:3001/api/workers/kitchen-events
+
+# Respuesta
+{
+  "success": true,
+  "processed": 5,
+  "duration": 234,
+  "timestamp": "2025-01-22T10:30:00Z"
+}
 ```
 
 ## 📦 Despliegue

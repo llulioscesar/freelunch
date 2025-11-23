@@ -31,6 +31,19 @@ export class PrismaOrderRepository implements OrderRepository {
         createdAt: new Date(data.createdAt),
         completedAt: data.completedAt ? new Date(data.completedAt) : null,
         updatedAt: new Date(data.updatedAt),
+        items: {
+          create: data.items.map((item: any) => ({
+            id: item.id,
+            recipeId: item.recipeId,
+            recipeName: item.recipeName,
+            status: item.status,
+            createdAt: new Date(item.createdAt),
+            assignedAt: item.assignedAt ? new Date(item.assignedAt) : null,
+            preparedAt: item.preparedAt ? new Date(item.preparedAt) : null,
+            deliveredAt: item.deliveredAt ? new Date(item.deliveredAt) : null,
+            failureReason: item.failureReason,
+          })),
+        },
       },
     });
   }
@@ -38,6 +51,9 @@ export class PrismaOrderRepository implements OrderRepository {
   async findById(id: OrderId): Promise<Order | null> {
     const orderData = await this.prisma.order.findUnique({
       where: { id: id.getValue() },
+      include: {
+        items: true,
+      },
     });
 
     if (!orderData) {
@@ -53,6 +69,18 @@ export class PrismaOrderRepository implements OrderRepository {
       createdAt: orderData.createdAt.toISOString(),
       completedAt: orderData.completedAt?.toISOString(),
       updatedAt: orderData.updatedAt.toISOString(),
+      items: orderData.items.map(item => ({
+        id: item.id,
+        orderId: item.orderId,
+        recipeId: item.recipeId,
+        recipeName: item.recipeName,
+        status: item.status,
+        createdAt: item.createdAt.toISOString(),
+        assignedAt: item.assignedAt?.toISOString(),
+        preparedAt: item.preparedAt?.toISOString(),
+        deliveredAt: item.deliveredAt?.toISOString(),
+        failureReason: item.failureReason,
+      })),
     });
   }
 
@@ -87,6 +115,9 @@ export class PrismaOrderRepository implements OrderRepository {
       orderBy: {
         [filters?.sortBy || 'createdAt']: filters?.sortOrder || 'desc',
       },
+      include: {
+        items: true,
+      },
     });
 
     return orderData.map(data => Order.fromPrimitives({
@@ -98,6 +129,18 @@ export class PrismaOrderRepository implements OrderRepository {
       createdAt: data.createdAt.toISOString(),
       completedAt: data.completedAt?.toISOString(),
       updatedAt: data.updatedAt.toISOString(),
+      items: data.items.map(item => ({
+        id: item.id,
+        orderId: item.orderId,
+        recipeId: item.recipeId,
+        recipeName: item.recipeName,
+        status: item.status,
+        createdAt: item.createdAt.toISOString(),
+        assignedAt: item.assignedAt?.toISOString(),
+        preparedAt: item.preparedAt?.toISOString(),
+        deliveredAt: item.deliveredAt?.toISOString(),
+        failureReason: item.failureReason,
+      })),
     }));
   }
 
@@ -131,13 +174,45 @@ export class PrismaOrderRepository implements OrderRepository {
   async update(order: Order): Promise<void> {
     const data = order.toPrimitives();
 
-    await this.prisma.order.update({
-      where: { id: data.id },
-      data: {
-        status: data.status,
-        completedAt: data.completedAt ? new Date(data.completedAt) : null,
-        updatedAt: new Date(data.updatedAt),
-      },
+    // Use transaction to update order and all items atomically
+    await this.prisma.$transaction(async (tx) => {
+      // Update order
+      await tx.order.update({
+        where: { id: data.id },
+        data: {
+          status: data.status,
+          completedAt: data.completedAt ? new Date(data.completedAt) : null,
+          updatedAt: new Date(data.updatedAt),
+        },
+      });
+
+      // Update each order item
+      for (const item of data.items) {
+        await tx.orderItem.upsert({
+          where: { id: item.id },
+          create: {
+            id: item.id,
+            orderId: data.id,
+            recipeId: item.recipeId,
+            recipeName: item.recipeName,
+            status: item.status,
+            createdAt: new Date(item.createdAt),
+            assignedAt: item.assignedAt ? new Date(item.assignedAt) : null,
+            preparedAt: item.preparedAt ? new Date(item.preparedAt) : null,
+            deliveredAt: item.deliveredAt ? new Date(item.deliveredAt) : null,
+            failureReason: item.failureReason,
+          },
+          update: {
+            recipeId: item.recipeId,
+            recipeName: item.recipeName,
+            status: item.status,
+            assignedAt: item.assignedAt ? new Date(item.assignedAt) : null,
+            preparedAt: item.preparedAt ? new Date(item.preparedAt) : null,
+            deliveredAt: item.deliveredAt ? new Date(item.deliveredAt) : null,
+            failureReason: item.failureReason,
+          },
+        });
+      }
     });
   }
 

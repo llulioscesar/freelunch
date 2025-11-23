@@ -14,6 +14,7 @@ import { CreateOrderUseCase } from '../../application/use-cases/CreateOrderUseCa
 import { GetOrderStatusUseCase } from '../../application/use-cases/GetOrderStatusUseCase';
 import { ListOrdersUseCase } from '../../application/use-cases/ListOrdersUseCase';
 import { UpdateOrderStatusUseCase } from '../../application/use-cases/UpdateOrderStatusUseCase';
+import { UpdateOrderItemStatusUseCase } from '../../application/use-cases/UpdateOrderItemStatusUseCase';
 
 export interface Dependencies {
   orderRepository: OrderRepository;
@@ -22,6 +23,7 @@ export interface Dependencies {
   getOrderStatusUseCase: GetOrderStatusUseCase;
   listOrdersUseCase: ListOrdersUseCase;
   updateOrderStatusUseCase: UpdateOrderStatusUseCase;
+  updateOrderItemStatusUseCase: UpdateOrderItemStatusUseCase;
 }
 
 export class DependencyContainer {
@@ -76,6 +78,10 @@ export class DependencyContainer {
       orderRepository,
       eventPublisher
     );
+    const updateOrderItemStatusUseCase = new UpdateOrderItemStatusUseCase(
+      orderRepository,
+      eventPublisher
+    );
 
     this.dependencies = {
       orderRepository,
@@ -84,6 +90,7 @@ export class DependencyContainer {
       getOrderStatusUseCase,
       listOrdersUseCase,
       updateOrderStatusUseCase,
+      updateOrderItemStatusUseCase,
     };
   }
 

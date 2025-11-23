@@ -4,8 +4,19 @@
       "maxDuration": 10,
       "memory": 512,
       "runtime": "nodejs20.x"
+    },
+    "api/workers/*.ts": {
+      "maxDuration": 60,
+      "memory": 1024,
+      "runtime": "nodejs20.x"
     }
   },
+  "crons": [
+    {
+      "path": "/api/workers/kitchen-events",
+      "schedule": "* * * * *"
+    }
+  ],
   "rewrites": [
     {
       "source": "/",
