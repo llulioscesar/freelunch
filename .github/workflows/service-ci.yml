@@ -1,0 +1,182 @@
+name: Service CI (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      service-name:
+        required: true
+        type: string
+      service-path:
+        required: true
+        type: string
+      should-deploy:
+        required: false
+        type: boolean
+        default: false
+      environment:
+        required: false
+        type: string
+        default: preview
+      custom-domain:
+        required: false
+        type: string
+        description: 'Custom domain to assign (e.g., orders.yourdomain.com)'
+    secrets:
+      VERCEL_TOKEN:
+        required: false
+      VERCEL_ORG_ID:
+        required: false
+      VERCEL_PROJECT_ID:
+        required: false
+    outputs:
+      deployment-url:
+        description: "Deployment URL from Vercel"
+        value: ${{ jobs.deploy.outputs.url }}
+
+jobs:
+  lint:
+    name: Lint ${{ inputs.service-name }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: '${{ inputs.service-path }}/package-lock.json'
+
+      - name: Install dependencies
+        working-directory: ${{ inputs.service-path }}
+        run: npm ci
+
+      - name: Run ESLint
+        working-directory: ${{ inputs.service-path }}
+        run: npm run lint
+
+      - name: Type Check
+        working-directory: ${{ inputs.service-path }}
+        run: npm run build
+
+  test:
+    name: Test ${{ inputs.service-name }}
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: '${{ inputs.service-path }}/package-lock.json'
+
+      - name: Install dependencies
+        working-directory: ${{ inputs.service-path }}
+        run: npm ci
+
+      - name: Run tests
+        working-directory: ${{ inputs.service-path }}
+        run: npm test -- --passWithNoTests
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.service-name }}-coverage
+          path: ${{ inputs.service-path }}/coverage
+          retention-days: 7
+
+  deploy:
+    name: Deploy ${{ inputs.service-name }} to ${{ inputs.environment }}
+    needs: test
+    if: inputs.should-deploy
+    runs-on: ubuntu-latest
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel Environment (Preview)
+        if: inputs.environment == 'preview'
+        working-directory: ${{ inputs.service-path }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Pull Vercel Environment (Production)
+        if: inputs.environment == 'production'
+        working-directory: ${{ inputs.service-path }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build Project
+        working-directory: ${{ inputs.service-path }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: vercel build ${{ inputs.environment == 'production' && '--prod' || '' }} --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy (Preview)
+        if: inputs.environment == 'preview'
+        id: deploy-preview
+        working-directory: ${{ inputs.service-path }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          url=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$url" >> $GITHUB_OUTPUT
+
+      - name: Deploy (Production)
+        if: inputs.environment == 'production'
+        id: deploy-prod
+        working-directory: ${{ inputs.service-path }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          url=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$url" >> $GITHUB_OUTPUT
+
+      - name: Set output
+        id: deploy
+        run: |
+          url="${{ steps.deploy-preview.outputs.url || steps.deploy-prod.outputs.url }}"
+          echo "url=$url" >> $GITHUB_OUTPUT
+
+      - name: Assign custom domain
+        if: inputs.custom-domain != ''
+        working-directory: ${{ inputs.service-path }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          vercel alias set ${{ steps.deploy.outputs.url }} ${{ inputs.custom-domain }} --token=${{ secrets.VERCEL_TOKEN }} --scope=${{ secrets.VERCEL_ORG_ID }}
+          echo "Custom domain assigned: ${{ inputs.custom-domain }}"
+
+      - name: Deployment Summary
+        run: |
+          echo "### ${{ inputs.service-name }} Deployed to ${{ inputs.environment }} 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Vercel URL:** ${{ steps.deploy.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ inputs.custom-domain }}" ]; then
+            echo "**Custom Domain:** https://${{ inputs.custom-domain }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
