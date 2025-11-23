@@ -18,6 +18,9 @@ jobs:
   detect-changes:
     name: Detect Changes
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       orders: ${{ steps.changes.outputs.orders }}
       kitchen: ${{ steps.changes.outputs.kitchen }}
@@ -27,11 +30,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Detect changed services
         uses: dorny/paths-filter@v2
         id: changes
         with:
+          list-files: shell
           filters: |
             orders:
               - 'services/orders/**'
