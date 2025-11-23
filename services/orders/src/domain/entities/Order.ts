@@ -8,6 +8,8 @@ import { Quantity } from '../value-objects/Quantity';
 import { CustomerInfo } from '../value-objects/CustomerInfo';
 import { OrderCreatedEvent } from '../events/OrderCreatedEvent';
 import { OrderStatusChangedEvent } from '../events/OrderStatusChangedEvent';
+import { OrderCompletedEvent } from '../events/OrderCompletedEvent';
+import { OrderFailedEvent } from '../events/OrderFailedEvent';
 
 export class Order {
   private readonly id: OrderId;
@@ -112,14 +114,36 @@ export class Order {
 
   markAsDelivered(): void {
     this.updateStatus(OrderStatusEnum.DELIVERED);
+
+    // Emitir evento específico de orden completada
+    const completedAt = new Date();
+    const preparationTimeMinutes = Math.round(
+      (completedAt.getTime() - this.createdAt.getTime()) / (1000 * 60)
+    );
+
+    this.addDomainEvent(
+      new OrderCompletedEvent(
+        this.id.getValue(),
+        completedAt,
+        preparationTimeMinutes,
+        this.quantity.getValue()
+      )
+    );
   }
 
-  markAsFailed(reason?: string): void {
+  markAsFailed(reason?: string, errorDetails?: string): void {
     this.updateStatus(OrderStatusEnum.FAILED);
-    if (reason) {
-      // Podríamos guardar la razón del fallo
-      console.error(`Order ${this.id.toString()} failed: ${reason}`);
-    }
+
+    // Emitir evento específico de orden fallida
+    this.addDomainEvent(
+      new OrderFailedEvent(
+        this.id.getValue(),
+        new Date(),
+        reason || 'Unknown error',
+        this.quantity.getValue(),
+        errorDetails
+      )
+    );
   }
 
   cancel(): void {
