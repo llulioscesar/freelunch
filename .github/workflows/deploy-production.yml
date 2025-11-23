@@ -1,49 +1,50 @@
 name: Deploy Production
 
 on:
-  workflow_dispatch:
-    inputs:
-      deploy-orders:
-        description: 'Deploy Orders Service'
-        type: boolean
-        default: false
-      deploy-kitchen:
-        description: 'Deploy Kitchen Service'
-        type: boolean
-        default: false
-      deploy-warehouse:
-        description: 'Deploy Warehouse Service'
-        type: boolean
-        default: false
-      deploy-market:
-        description: 'Deploy Market Service'
-        type: boolean
-        default: false
-      deploy-frontend:
-        description: 'Deploy Frontend'
-        type: boolean
-        default: false
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  approval:
-    name: Deployment Approval
+  detect-changes:
+    name: Detect Changes
     runs-on: ubuntu-latest
-    environment: production
+    permissions:
+      contents: read
+    outputs:
+      orders: ${{ steps.changes.outputs.orders }}
+      kitchen: ${{ steps.changes.outputs.kitchen }}
     steps:
-      - name: Wait for approval
-        run: |
-          echo "🚀 Production deployment approved"
-          echo "Services to deploy:"
-          echo "- Orders: ${{ github.event.inputs.deploy-orders }}"
-          echo "- Kitchen: ${{ github.event.inputs.deploy-kitchen }}"
-          echo "- Warehouse: ${{ github.event.inputs.deploy-warehouse }}"
-          echo "- Market: ${{ github.event.inputs.deploy-market }}"
-          echo "- Frontend: ${{ github.event.inputs.deploy-frontend }}"
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed services
+        uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          list-files: shell
+          token: ${{ github.token }}
+          base: ${{ github.event.before }}
+          filters: |
+            orders:
+              - 'services/orders/**'
+              - 'packages/**'
+            kitchen:
+              - 'services/kitchen/**'
+              - 'packages/**'
 
   deploy-orders:
     name: Deploy Orders to Production
-    needs: approval
-    if: github.event.inputs.deploy-orders == 'true'
+    needs: detect-changes
+    if: needs.detect-changes.outputs.orders == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -97,8 +98,8 @@ jobs:
 
   deploy-kitchen:
     name: Deploy Kitchen to Production
-    needs: approval
-    if: github.event.inputs.deploy-kitchen == 'true'
+    needs: detect-changes
+    if: needs.detect-changes.outputs.kitchen == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
