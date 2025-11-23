@@ -87,7 +87,7 @@ jobs:
 
   test-orders:
     name: Test Orders Service
-    needs: detect-changes
+    needs: [detect-changes, lint-orders]
     if: needs.detect-changes.outputs.orders == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -147,7 +147,7 @@ jobs:
 
   test-kitchen:
     name: Test Kitchen Service
-    needs: detect-changes
+    needs: [detect-changes, lint-kitchen]
     if: needs.detect-changes.outputs.kitchen == 'true'
     runs-on: ubuntu-latest
     steps:
