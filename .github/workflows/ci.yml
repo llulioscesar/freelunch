@@ -39,6 +39,7 @@ jobs:
         with:
           list-files: shell
           token: ${{ github.token }}
+          base: ${{ github.event.before || github.event.pull_request.base.sha }}
           filters: |
             orders:
               - 'services/orders/**'
