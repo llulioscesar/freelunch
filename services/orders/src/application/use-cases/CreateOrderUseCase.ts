@@ -10,6 +10,7 @@ import { OrderRepository } from '../../domain/repositories/OrderRepository';
 import { EventPublisher } from '../ports/out/EventPublisher';
 import { CreateOrderDTO, CreateOrderResponseDTO } from '../dto/CreateOrderDTO';
 import { logger } from '../../infrastructure/logging/Logger';
+import { metricsService } from '../../infrastructure/metrics/MetricsService';
 
 export class CreateOrderUseCase {
   constructor(
@@ -69,6 +70,11 @@ export class CreateOrderUseCase {
         orderId: orderId.getValue(),
       });
 
+      // Record metrics
+      const durationSeconds = duration / 1000;
+      metricsService.recordUseCaseExecution(useCaseName, durationSeconds, true);
+      metricsService.recordOrderCreated(order.getQuantity().getValue());
+
       // Map to response DTO
       return {
         success: true,
@@ -82,6 +88,10 @@ export class CreateOrderUseCase {
         message: 'Order created successfully and sent to kitchen',
       };
     } catch (error: any) {
+      const duration = Date.now() - startTime;
+      const durationSeconds = duration / 1000;
+      metricsService.recordUseCaseExecution(useCaseName, durationSeconds, false);
+
       logger.logUseCaseError(useCaseName, error);
       throw error;
     }

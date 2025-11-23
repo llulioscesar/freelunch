@@ -6,6 +6,7 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { z } from 'zod';
 import { dependencies } from '../../infrastructure/config/dependencies';
 import { withLogging } from '../../infrastructure/logging/RequestLogger';
+import { withMetrics } from '../../infrastructure/metrics/MetricsMiddleware';
 import { logger } from '../../infrastructure/logging/Logger';
 
 // Request validation schema
@@ -76,5 +77,5 @@ async function createOrderHandler(
   }
 }
 
-// Export handler wrapped with logging middleware
-export default withLogging(createOrderHandler);
+// Export handler wrapped with logging and metrics middleware
+export default withMetrics(withLogging(createOrderHandler));

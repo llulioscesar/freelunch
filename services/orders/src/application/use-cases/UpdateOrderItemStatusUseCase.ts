@@ -17,6 +17,7 @@ import { OrderItemStatus } from '../../domain/entities/OrderItem';
 import { OrderStatusEnum } from '../../domain/value-objects/OrderStatus';
 import { EventPublisher } from '../ports/out/EventPublisher';
 import { logger } from '../../infrastructure/logging/Logger';
+import { metricsService } from '../../infrastructure/metrics/MetricsService';
 
 export interface UpdateOrderItemStatusDTO {
   orderId: string;
@@ -170,6 +171,23 @@ export class UpdateOrderItemStatusUseCase {
         itemId: dto.itemId,
       });
 
+      // Record metrics
+      const durationSeconds = duration / 1000;
+      metricsService.recordUseCaseExecution(useCaseName, durationSeconds, true);
+
+      // Record item metrics based on status
+      if (dto.status === OrderItemStatus.READY && item.getPreparedAt()) {
+        const prepTime = item.getPreparationTime();
+        if (prepTime !== null) {
+          metricsService.recordOrderItemCompleted(
+            item.getRecipeName() || 'unknown',
+            prepTime
+          );
+        }
+      } else if (dto.status === OrderItemStatus.FAILED) {
+        metricsService.recordOrderItemFailed(item.getRecipeName());
+      }
+
       return {
         success: true,
         order: {
@@ -187,6 +205,10 @@ export class UpdateOrderItemStatusUseCase {
         },
       };
     } catch (error: any) {
+      const duration = Date.now() - startTime;
+      const durationSeconds = duration / 1000;
+      metricsService.recordUseCaseExecution(useCaseName, durationSeconds, false);
+
       logger.logUseCaseError(useCaseName, error, {
         orderId: dto.orderId,
         itemId: dto.itemId,

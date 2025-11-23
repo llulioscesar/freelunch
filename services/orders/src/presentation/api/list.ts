@@ -4,8 +4,9 @@
  */
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { dependencies } from '../../infrastructure/config/dependencies';
+import { withMetrics } from '../../infrastructure/metrics/MetricsMiddleware';
 
-export default async function handler(
+async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
@@ -54,3 +55,5 @@ export default async function handler(
     });
   }
 }
+
+export default withMetrics(handler);

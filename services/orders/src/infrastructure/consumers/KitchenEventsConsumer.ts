@@ -19,6 +19,7 @@ import { RedisClient } from '../adapters/cache/RedisClient';
 import { UpdateOrderItemStatusUseCase } from '../../application/use-cases/UpdateOrderItemStatusUseCase';
 import { OrderItemStatus } from '../../domain/entities/OrderItem';
 import { logger } from '../logging/Logger';
+import { metricsService } from '../metrics/MetricsService';
 
 export interface KitchenEventPayload {
   event: string;
@@ -205,6 +206,8 @@ export class KitchenEventsConsumer {
       await this.ackMessage(messageId);
 
       const duration = Date.now() - startTime;
+      const durationSeconds = duration / 1000;
+
       logger.info('Kitchen event processed successfully', {
         messageId,
         event: payload.event,
@@ -213,10 +216,32 @@ export class KitchenEventsConsumer {
         duration,
         progress: result.order?.progress,
       });
+
+      // Record metrics
+      metricsService.recordEventConsumed(
+        payload.event,
+        this.streamName,
+        this.consumerGroup,
+        durationSeconds,
+        false
+      );
     } catch (error) {
+      const duration = Date.now() - startTime;
+      const durationSeconds = duration / 1000;
+
       logger.error('Error processing message', error as Error, {
         messageId,
       });
+
+      // Record error metrics
+      metricsService.recordEventConsumed(
+        'unknown',
+        this.streamName,
+        this.consumerGroup,
+        durationSeconds,
+        true
+      );
+
       // Message stays in pending list for retry
     }
   }

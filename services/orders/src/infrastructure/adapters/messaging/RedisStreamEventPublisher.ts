@@ -19,6 +19,7 @@ import { OrderFailedEvent } from '../../../domain/events/OrderFailedEvent';
 import { OrderStatusChangedEvent } from '../../../domain/events/OrderStatusChangedEvent';
 import { RedisClient } from '../cache/RedisClient';
 import { logger } from '../../logging/Logger';
+import { metricsService } from '../../metrics/MetricsService';
 
 export class RedisStreamEventPublisher implements EventPublisher {
   private redis;
@@ -29,6 +30,8 @@ export class RedisStreamEventPublisher implements EventPublisher {
   }
 
   async publish(event: DomainEvent): Promise<void> {
+    const startTime = Date.now();
+
     try {
       const eventData = this.serializeEvent(event);
 
@@ -43,6 +46,9 @@ export class RedisStreamEventPublisher implements EventPublisher {
       logger.logEventPublished(event.eventName(), this.streamName, messageId as string, {
         aggregateId: event.aggregateId,
       });
+
+      // Record metrics
+      metricsService.recordEventPublished(event.eventName(), this.streamName);
 
       // Route specific events to specialized streams for targeted consumers
       await this.routeEventToSpecializedStream(event);

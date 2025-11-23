@@ -8,6 +8,7 @@ import { EventPublisher } from '../../application/ports/out/EventPublisher';
 import { PrismaOrderRepository } from '../adapters/persistence/PrismaOrderRepository';
 import { CachedOrderRepository } from '../adapters/persistence/CachedOrderRepository';
 import { InMemoryOrderRepository } from '../adapters/persistence/InMemoryOrderRepository';
+import { MetricsOrderRepository } from '../adapters/persistence/MetricsOrderRepository';
 import { RedisStreamEventPublisher } from '../adapters/messaging/RedisStreamEventPublisher';
 import { RedisClient } from '../cache/RedisClient';
 import { CreateOrderUseCase } from '../../application/use-cases/CreateOrderUseCase';
@@ -48,11 +49,12 @@ export class DependencyContainer {
 
       // Wrap with cache if Redis is configured
       if (RedisClient.isConfigured()) {
-        orderRepository = new CachedOrderRepository(baseRepository);
-        console.log('✅ Repository: Prisma + Redis Cache');
+        const cachedRepository = new CachedOrderRepository(baseRepository);
+        orderRepository = new MetricsOrderRepository(cachedRepository);
+        console.log('✅ Repository: Prisma + Redis Cache + Metrics');
       } else {
-        orderRepository = baseRepository;
-        console.log('⚠️  Repository: Prisma only (Redis not configured)');
+        orderRepository = new MetricsOrderRepository(baseRepository);
+        console.log('⚠️  Repository: Prisma + Metrics (Redis not configured)');
       }
     }
 

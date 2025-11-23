@@ -5,6 +5,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { z } from 'zod';
 import { dependencies } from '../../infrastructure/config/dependencies';
+import { withMetrics } from '../../infrastructure/metrics/MetricsMiddleware';
 
 // Request validation schema for update
 const updateStatusSchema = z.object({
@@ -12,7 +13,7 @@ const updateStatusSchema = z.object({
   completedAt: z.string().optional(),
 });
 
-export default async function handler(
+async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
@@ -80,3 +81,5 @@ export default async function handler(
     });
   }
 }
+
+export default withMetrics(handler);
