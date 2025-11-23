@@ -36,8 +36,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-          fetch-depth: 2
+          ref: ${{ github.event.workflow_run.head_branch }}
+          fetch-depth: 0
 
       - name: Detect changed services
         uses: dorny/paths-filter@v2
@@ -45,7 +45,6 @@ jobs:
         with:
           list-files: shell
           token: ${{ github.token }}
-          base: HEAD^
           filters: |
             orders:
               - 'services/orders/**'
