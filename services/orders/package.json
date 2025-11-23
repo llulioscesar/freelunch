@@ -1,6 +1,6 @@
 {
   "name": "orders-service",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "private": true,
   "description": "Orders management service for FreeLunch system",
   "scripts": {

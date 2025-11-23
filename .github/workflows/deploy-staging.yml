@@ -12,38 +12,38 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  detect-changes:
-    name: Detect Changes
+  load-changes:
+    name: Load Changed Services
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     outputs:
-      orders: ${{ steps.changes.outputs.orders }}
-      kitchen: ${{ steps.changes.outputs.kitchen }}
+      orders: ${{ steps.load.outputs.orders }}
+      kitchen: ${{ steps.load.outputs.kitchen }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Download changed services artifact
+        uses: actions/download-artifact@v4
         with:
-          fetch-depth: 0
+          name: changed-services-${{ github.sha }}
+        continue-on-error: true
 
-      - name: Detect changed services
-        uses: dorny/paths-filter@v2
-        id: changes
-        with:
-          list-files: shell
-          token: ${{ github.token }}
-          filters: |
-            orders:
-              - 'services/orders/**'
-              - 'packages/**'
-            kitchen:
-              - 'services/kitchen/**'
-              - 'packages/**'
+      - name: Load changes or deploy all
+        id: load
+        run: |
+          if [ -f changed-services.txt ]; then
+            echo "Loading changes from artifact..."
+            cat changed-services.txt
+            source changed-services.txt
+            echo "orders=$orders" >> $GITHUB_OUTPUT
+            echo "kitchen=$kitchen" >> $GITHUB_OUTPUT
+          else
+            echo "No artifact found, deploying all services..."
+            echo "orders=true" >> $GITHUB_OUTPUT
+            echo "kitchen=true" >> $GITHUB_OUTPUT
+          fi
 
   deploy-orders-staging:
     name: Deploy Orders to Staging
-    needs: detect-changes
-    if: needs.detect-changes.outputs.orders == 'true'
+    needs: load-changes
+    if: needs.load-changes.outputs.orders == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -91,8 +91,8 @@ jobs:
 
   deploy-kitchen-staging:
     name: Deploy Kitchen to Staging
-    needs: detect-changes
-    if: needs.detect-changes.outputs.kitchen == 'true'
+    needs: load-changes
+    if: needs.load-changes.outputs.kitchen == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
