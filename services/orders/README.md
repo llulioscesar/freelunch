@@ -4,11 +4,11 @@ Servicio de gestión de pedidos con Arquitectura Hexagonal y Domain-Driven Desig
 
 ## 📚 Documentación
 
-- **[Quick Start - Git Workflow & CI/CD](./docs/QUICK_START.md)** - Respuestas rápidas para empezar
-- **[Git Workflow Completo](./docs/GIT_WORKFLOW.md)** - Flujo detallado dev → test → main
-- **[Pipeline Flow](./docs/PIPELINE_FLOW.md)** - Cuándo y dónde se ejecuta el pipeline
-- **[Vercel Setup](./docs/VERCEL_SETUP.md)** - Configuración multi-ambiente en Vercel
-- **[Vercel Free Tier](./docs/VERCEL_FREE_TIER.md)** - ✅ Staging + Production GRATIS
+- **[Quick Start - Git Workflow & CI/CD](../../docs/QUICK_START.md)** - Respuestas rápidas para empezar
+- **[Git Workflow Completo](../../docs/GIT_WORKFLOW.md)** - Flujo detallado dev → test → main
+- **[Pipeline Flow](../../docs/PIPELINE_FLOW.md)** - Cuándo y dónde se ejecuta el pipeline
+- **[Vercel Setup](../../docs/VERCEL_SETUP.md)** - Configuración multi-ambiente en Vercel
+- **[Vercel Free Tier](../../docs/VERCEL_FREE_TIER.md)** - ✅ Staging + Production GRATIS
 
 ## 🚀 Testing & Coverage
 
