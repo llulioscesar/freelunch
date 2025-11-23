@@ -2,6 +2,24 @@
 
 Servicio de gestión de pedidos con Arquitectura Hexagonal y Domain-Driven Design (DDD).
 
+## 📚 Documentación
+
+- **[Quick Start - Git Workflow & CI/CD](./docs/QUICK_START.md)** - Respuestas rápidas para empezar
+- **[Git Workflow Completo](./docs/GIT_WORKFLOW.md)** - Flujo detallado dev → test → main
+- **[Pipeline Flow](./docs/PIPELINE_FLOW.md)** - Cuándo y dónde se ejecuta el pipeline
+- **[Vercel Setup](./docs/VERCEL_SETUP.md)** - Configuración multi-ambiente en Vercel
+- **[Vercel Free Tier](./docs/VERCEL_FREE_TIER.md)** - ✅ Staging + Production GRATIS
+
+## 🚀 Testing & Coverage
+
+[![Coverage](https://img.shields.io/badge/coverage-74.3%25-brightgreen)](./coverage)
+[![Tests](https://img.shields.io/badge/tests-460%20passing-success)](./__tests__)
+
+- **Branches:** 74.3% ✅ (objetivo: 70%)
+- **Statements:** 75.79%
+- **Functions:** 81.19%
+- **Lines:** 75.68%
+
 ## 🏗️ Arquitectura
 
 Este servicio implementa **Arquitectura Hexagonal** (también conocida como Ports and Adapters) con los principios de **Domain-Driven Design**:

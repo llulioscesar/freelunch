@@ -28,7 +28,12 @@
     }
   ],
   "env": {
-    "SERVICE_NAME": "orders-service",
-    "NODE_ENV": "production"
+    "SERVICE_NAME": "orders-service"
+  },
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "test": true
+    }
   }
 }

@@ -1,0 +1,31 @@
+# CODEOWNERS
+# Asigna automáticamente reviewers a PRs basado en archivos modificados
+# Docs: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owners para todo el repositorio
+* @llulioscesar
+
+# Domain layer - Requiere review de arquitecto/tech lead
+/src/domain/ @llulioscesar
+/src/application/use-cases/ @llulioscesar
+
+# Infrastructure - DevOps/Backend team
+/src/infrastructure/ @llulioscesar
+/.github/workflows/ @llulioscesar
+
+# Tests - QA team + developer
+/__tests__/ @llulioscesar
+
+# Configuration files - Tech lead approval
+package.json @llulioscesar
+tsconfig.json @llulioscesar
+jest.config.js @llulioscesar
+.env.example @llulioscesar
+
+# Documentation - Everyone can review but tech lead approves
+/docs/ @llulioscesar
+README.md @llulioscesar
+
+# Security sensitive - Requiere tech lead + security team
+.env* @llulioscesar
+/src/infrastructure/config/dependencies.ts @llulioscesar
