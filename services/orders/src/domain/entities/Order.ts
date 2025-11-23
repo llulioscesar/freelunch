@@ -10,6 +10,7 @@ import { OrderCreatedEvent } from '../events/OrderCreatedEvent';
 import { OrderStatusChangedEvent } from '../events/OrderStatusChangedEvent';
 import { OrderCompletedEvent } from '../events/OrderCompletedEvent';
 import { OrderFailedEvent } from '../events/OrderFailedEvent';
+import { logger } from '../../infrastructure/logging/Logger';
 
 export class Order {
   private readonly id: OrderId;
@@ -37,13 +38,17 @@ export class Order {
 
     // Si es una nueva orden, emitir evento de creación
     if (!status) {
-      this.addDomainEvent(
-        new OrderCreatedEvent(
-          this.id.getValue(),
-          this.quantity.getValue(),
-          this.customerInfo.getName()
-        )
+      const event = new OrderCreatedEvent(
+        this.id.getValue(),
+        this.quantity.getValue(),
+        this.customerInfo.getName()
       );
+      this.addDomainEvent(event);
+
+      logger.logDomainEvent('order.created', this.id.getValue(), {
+        quantity: this.quantity.getValue(),
+        customerName: this.customerInfo.getName(),
+      });
     }
   }
 
@@ -95,13 +100,17 @@ export class Order {
     }
 
     // Emitir evento de cambio de estado
-    this.addDomainEvent(
-      new OrderStatusChangedEvent(
-        this.id.getValue(),
-        oldStatus,
-        newStatus
-      )
+    const event = new OrderStatusChangedEvent(
+      this.id.getValue(),
+      oldStatus,
+      newStatus
     );
+    this.addDomainEvent(event);
+
+    logger.logDomainEvent('order.status.changed', this.id.getValue(), {
+      previousStatus: oldStatus,
+      newStatus,
+    });
   }
 
   markAsPreparing(): void {
@@ -121,29 +130,38 @@ export class Order {
       (completedAt.getTime() - this.createdAt.getTime()) / (1000 * 60)
     );
 
-    this.addDomainEvent(
-      new OrderCompletedEvent(
-        this.id.getValue(),
-        completedAt,
-        preparationTimeMinutes,
-        this.quantity.getValue()
-      )
+    const event = new OrderCompletedEvent(
+      this.id.getValue(),
+      completedAt,
+      preparationTimeMinutes,
+      this.quantity.getValue()
     );
+    this.addDomainEvent(event);
+
+    logger.logDomainEvent('order.completed', this.id.getValue(), {
+      preparationTimeMinutes,
+      quantity: this.quantity.getValue(),
+    });
   }
 
   markAsFailed(reason?: string, errorDetails?: string): void {
     this.updateStatus(OrderStatusEnum.FAILED);
 
     // Emitir evento específico de orden fallida
-    this.addDomainEvent(
-      new OrderFailedEvent(
-        this.id.getValue(),
-        new Date(),
-        reason || 'Unknown error',
-        this.quantity.getValue(),
-        errorDetails
-      )
+    const event = new OrderFailedEvent(
+      this.id.getValue(),
+      new Date(),
+      reason || 'Unknown error',
+      this.quantity.getValue(),
+      errorDetails
     );
+    this.addDomainEvent(event);
+
+    logger.logDomainEvent('order.failed', this.id.getValue(), {
+      reason: reason || 'Unknown error',
+      errorDetails,
+      quantity: this.quantity.getValue(),
+    });
   }
 
   cancel(): void {

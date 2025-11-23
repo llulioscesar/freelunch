@@ -5,6 +5,8 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { z } from 'zod';
 import { dependencies } from '../../infrastructure/config/dependencies';
+import { withLogging } from '../../infrastructure/logging/RequestLogger';
+import { logger } from '../../infrastructure/logging/Logger';
 
 // Request validation schema
 const createOrderSchema = z.object({
@@ -13,7 +15,7 @@ const createOrderSchema = z.object({
   notes: z.string().optional(),
 });
 
-export default async function handler(
+async function createOrderHandler(
   req: VercelRequest,
   res: VercelResponse
 ) {
@@ -26,6 +28,11 @@ export default async function handler(
     // Validate request body
     const body = createOrderSchema.parse(req.body);
 
+    logger.debug('Creating order', {
+      quantity: body.quantity,
+      customerName: body.customerName,
+    });
+
     // Execute use case
     const result = await dependencies.createOrderUseCase.execute({
       quantity: body.quantity,
@@ -33,12 +40,19 @@ export default async function handler(
       notes: body.notes,
     });
 
+    logger.info('Order created successfully', {
+      orderId: result.order?.id,
+      quantity: body.quantity,
+    });
+
     // Return response
     return res.status(201).json(result);
   } catch (error) {
-    console.error('Error in create order endpoint:', error);
-
     if (error instanceof z.ZodError) {
+      logger.warn('Validation error', {
+        errors: error.errors,
+      });
+
       return res.status(400).json({
         error: 'Invalid request',
         details: error.errors,
@@ -46,10 +60,14 @@ export default async function handler(
     }
 
     if (error instanceof Error) {
+      logger.error('Order creation failed', error);
+
       return res.status(400).json({
         error: error.message,
       });
     }
+
+    logger.error('Unknown error in create order', error as Error);
 
     return res.status(500).json({
       error: 'Internal server error',
@@ -57,3 +75,6 @@ export default async function handler(
     });
   }
 }
+
+// Export handler wrapped with logging middleware
+export default withLogging(createOrderHandler);

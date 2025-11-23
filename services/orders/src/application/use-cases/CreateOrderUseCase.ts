@@ -9,6 +9,7 @@ import { CustomerInfo } from '../../domain/value-objects/CustomerInfo';
 import { OrderRepository } from '../../domain/repositories/OrderRepository';
 import { EventPublisher } from '../ports/out/EventPublisher';
 import { CreateOrderDTO, CreateOrderResponseDTO } from '../dto/CreateOrderDTO';
+import { logger } from '../../infrastructure/logging/Logger';
 
 export class CreateOrderUseCase {
   constructor(
@@ -17,6 +18,14 @@ export class CreateOrderUseCase {
   ) {}
 
   async execute(dto: CreateOrderDTO): Promise<CreateOrderResponseDTO> {
+    const startTime = Date.now();
+    const useCaseName = 'CreateOrder';
+
+    logger.logUseCaseStart(useCaseName, {
+      quantity: dto.quantity,
+      customerName: dto.customerName,
+    });
+
     try {
       // Validate input data (application level validation)
       if (!dto.quantity || dto.quantity < 1) {
@@ -28,11 +37,18 @@ export class CreateOrderUseCase {
       const quantity = new Quantity(dto.quantity);
       const customerInfo = new CustomerInfo(dto.customerName, dto.notes);
 
+      logger.debug('Value objects created', {
+        orderId: orderId.getValue(),
+        quantity: dto.quantity,
+      });
+
       // Create domain entity
       const order = new Order(orderId, quantity, customerInfo);
 
       // Save to repository
       await this.orderRepository.save(order);
+
+      logger.logRepositoryOperation('save', 'Order', orderId.getValue());
 
       // Publish domain events
       const events = order.getDomainEvents();
@@ -40,8 +56,18 @@ export class CreateOrderUseCase {
         await this.eventPublisher.publish(event);
       }
 
+      logger.info(`Published ${events.length} domain events`, {
+        orderId: orderId.getValue(),
+        eventCount: events.length,
+      });
+
       // Clear domain events after publishing
       order.clearDomainEvents();
+
+      const duration = Date.now() - startTime;
+      logger.logUseCaseEnd(useCaseName, duration, {
+        orderId: orderId.getValue(),
+      });
 
       // Map to response DTO
       return {
@@ -56,7 +82,7 @@ export class CreateOrderUseCase {
         message: 'Order created successfully and sent to kitchen',
       };
     } catch (error: any) {
-      console.error('Error creating order:', error);
+      logger.logUseCaseError(useCaseName, error);
       throw error;
     }
   }

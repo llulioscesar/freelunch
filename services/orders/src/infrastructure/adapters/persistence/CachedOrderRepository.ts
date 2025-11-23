@@ -24,6 +24,7 @@ import { OrderId } from '../../../domain/value-objects/OrderId';
 import { PrismaOrderRepository } from './PrismaOrderRepository';
 import { RedisClient } from '../cache/RedisClient';
 import { Redis } from '@upstash/redis';
+import { logger } from '../../logging/Logger';
 
 export class CachedOrderRepository implements OrderRepository {
   private redis: Redis;
@@ -56,7 +57,10 @@ export class CachedOrderRepository implements OrderRepository {
     // 3. Invalidate list caches (they're now stale)
     await this.invalidateListCaches();
 
-    console.log(`💾 Order saved and cached: ${order.getId().getValue()}`);
+    logger.logCacheOperation('set', cacheKey, {
+      entityId: order.getId().getValue(),
+      ttl: this.CACHE_TTL_ORDER,
+    });
   }
 
   /**
@@ -70,12 +74,12 @@ export class CachedOrderRepository implements OrderRepository {
       const cached = await this.redis.get<string>(cacheKey);
 
       if (cached) {
-        console.log(`✅ Cache HIT: ${id.getValue()}`);
+        logger.logCacheOperation('hit', cacheKey, { entityId: id.getValue() });
         const data = typeof cached === 'string' ? JSON.parse(cached) : cached;
         return Order.fromPrimitives(data);
       }
 
-      console.log(`❌ Cache MISS: ${id.getValue()}`);
+      logger.logCacheOperation('miss', cacheKey, { entityId: id.getValue() });
     } catch (error) {
       console.error('Cache read error:', error);
       // Continue to DB on cache error

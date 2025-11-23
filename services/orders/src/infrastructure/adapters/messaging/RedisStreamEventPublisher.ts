@@ -18,6 +18,7 @@ import { OrderCompletedEvent } from '../../../domain/events/OrderCompletedEvent'
 import { OrderFailedEvent } from '../../../domain/events/OrderFailedEvent';
 import { OrderStatusChangedEvent } from '../../../domain/events/OrderStatusChangedEvent';
 import { RedisClient } from '../cache/RedisClient';
+import { logger } from '../../logging/Logger';
 
 export class RedisStreamEventPublisher implements EventPublisher {
   private redis;
@@ -39,13 +40,18 @@ export class RedisStreamEventPublisher implements EventPublisher {
         eventData
       );
 
-      console.log(`📡 Event published to stream: ${event.eventName()} [${messageId}]`);
+      logger.logEventPublished(event.eventName(), this.streamName, messageId as string, {
+        aggregateId: event.aggregateId,
+      });
 
       // Route specific events to specialized streams for targeted consumers
       await this.routeEventToSpecializedStream(event);
 
     } catch (error: any) {
-      console.error(`❌ Failed to publish event to Redis Stream: ${event.eventName()}`, error);
+      logger.error(`Failed to publish event to Redis Stream: ${event.eventName()}`, error as Error, {
+        eventType: event.eventName(),
+        aggregateId: event.aggregateId,
+      });
       throw new Error(`Event publishing failed: ${error.message}`);
     }
   }
@@ -90,7 +96,11 @@ export class RedisStreamEventPublisher implements EventPublisher {
     if (targetStream) {
       const eventData = this.serializeEvent(event);
       await this.redis.xadd(targetStream, '*', eventData);
-      console.log(`  ↳ Routed to specialized stream: ${targetStream}`);
+      logger.debug(`Event routed to specialized stream`, {
+        eventType: event.eventName(),
+        targetStream,
+        aggregateId: event.aggregateId,
+      });
     }
   }
 
