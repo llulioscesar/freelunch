@@ -1,0 +1,172 @@
+name: Deploy Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main, develop, dev]
+
+concurrency:
+  group: preview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      orders: ${{ steps.changes.outputs.orders }}
+      kitchen: ${{ steps.changes.outputs.kitchen }}
+      warehouse: ${{ steps.changes.outputs.warehouse }}
+      market: ${{ steps.changes.outputs.market }}
+      frontend: ${{ steps.changes.outputs.frontend }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect changed services
+        uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            orders:
+              - 'services/orders/**'
+              - 'packages/**'
+            kitchen:
+              - 'services/kitchen/**'
+              - 'packages/**'
+            warehouse:
+              - 'services/warehouse/**'
+              - 'packages/**'
+            market:
+              - 'services/market/**'
+              - 'packages/**'
+            frontend:
+              - 'frontend/**'
+              - 'packages/**'
+
+  deploy-orders-preview:
+    name: Deploy Orders Preview
+    needs: detect-changes
+    if: needs.detect-changes.outputs.orders == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel Environment Information
+        working-directory: ./services/orders
+        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build Project Artifacts
+        working-directory: ./services/orders
+        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy Preview to Vercel
+        id: deploy
+        working-directory: ./services/orders
+        run: |
+          url=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$url" >> $GITHUB_OUTPUT
+
+      - name: Comment PR with Preview URL
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const url = '${{ steps.deploy.outputs.url }}';
+            const comment = `## 🚀 Orders Service Preview Deployed
+
+            **Preview URL:** ${url}
+
+            ### Endpoints:
+            - Health: ${url}/api
+            - Create Order: ${url}/api/create
+            - List Orders: ${url}/api/list
+            - Metrics: ${url}/api/metrics
+
+            ---
+            *Deployed from commit ${{ github.sha }}*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  deploy-kitchen-preview:
+    name: Deploy Kitchen Preview
+    needs: detect-changes
+    if: needs.detect-changes.outputs.kitchen == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel Environment Information
+        working-directory: ./services/kitchen
+        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build Project Artifacts
+        working-directory: ./services/kitchen
+        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy Preview to Vercel
+        id: deploy
+        working-directory: ./services/kitchen
+        run: |
+          url=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$url" >> $GITHUB_OUTPUT
+
+      - name: Comment PR with Preview URL
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const url = '${{ steps.deploy.outputs.url }}';
+            const comment = `## 🍳 Kitchen Service Preview Deployed
+
+            **Preview URL:** ${url}
+
+            ### Endpoints:
+            - Health: ${url}/api
+            - Recipes: ${url}/api/recipes
+
+            ---
+            *Deployed from commit ${{ github.sha }}*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  preview-summary:
+    name: Preview Deployment Summary
+    if: always()
+    needs: [detect-changes, deploy-orders-preview, deploy-kitchen-preview]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summary
+        run: |
+          echo "### Preview Deployment Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Service | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Orders | ${{ needs.deploy-orders-preview.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Kitchen | ${{ needs.deploy-kitchen-preview.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
