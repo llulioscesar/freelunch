@@ -1,0 +1,283 @@
+/**
+ * Unit Tests: Plate Entity
+ */
+import { Plate } from '../../../../src/domain/entities/Plate';
+import { PlateId } from '../../../../src/domain/value-objects/PlateId';
+import { RecipeId } from '../../../../src/domain/value-objects/RecipeId';
+import { OrderReference } from '../../../../src/domain/value-objects/OrderReference';
+import { Ingredients } from '../../../../src/domain/value-objects/Ingredients';
+import { PlateStatusEnum } from '../../../../src/domain/value-objects/PlateStatus';
+
+describe('Plate Entity', () => {
+  let plateId: PlateId;
+  let orderReference: OrderReference;
+
+  beforeEach(() => {
+    plateId = new PlateId();
+    orderReference = new OrderReference('order-123', 'item-456');
+  });
+
+  describe('Constructor', () => {
+    it('should create a new Plate in PENDING status', () => {
+      const plate = new Plate(plateId, orderReference);
+
+      expect(plate.getId()).toBe(plateId);
+      expect(plate.getOrderReference()).toBe(orderReference);
+      expect(plate.getStatus().getValue()).toBe(PlateStatusEnum.PENDING);
+      expect(plate.getRecipeId()).toBeNull();
+      expect(plate.getIngredients()).toBeNull();
+    });
+  });
+
+  describe('assignRecipe', () => {
+    it('should assign recipe to PENDING plate', () => {
+      const plate = new Plate(plateId, orderReference);
+      const recipeId = new RecipeId();
+      const ingredients = new Ingredients({ tomato: 2, onion: 1 });
+
+      plate.assignRecipe(recipeId, 'Tomato Salad', ingredients);
+
+      expect(plate.getRecipeId()).toBe(recipeId);
+      expect(plate.getRecipeName()).toBe('Tomato Salad');
+      expect(plate.getIngredients()).toBe(ingredients);
+      expect(plate.getStatus().getValue()).toBe(PlateStatusEnum.ASSIGNED);
+      expect(plate.getAssignedAt()).toBeInstanceOf(Date);
+    });
+
+    it('should emit PlateAssignedEvent', () => {
+      const plate = new Plate(plateId, orderReference);
+      const recipeId = new RecipeId();
+      const ingredients = new Ingredients({ tomato: 2 });
+
+      plate.assignRecipe(recipeId, 'Recipe', ingredients);
+
+      const events = plate.getDomainEvents();
+      expect(events).toHaveLength(1);
+      expect(events[0].eventName).toBe('PlateAssignedEvent');
+    });
+
+    it('should throw error if plate is not PENDING', () => {
+      const plate = new Plate(plateId, orderReference);
+      const recipeId = new RecipeId();
+      const ingredients = new Ingredients({ tomato: 2 });
+
+      plate.assignRecipe(recipeId, 'Recipe', ingredients);
+
+      expect(() => plate.assignRecipe(recipeId, 'Recipe2', ingredients))
+        .toThrow('Can only assign recipe to pending plates');
+    });
+  });
+
+  describe('requestIngredients', () => {
+    it('should request ingredients for ASSIGNED plate', () => {
+      const plate = new Plate(plateId, orderReference);
+      const recipeId = new RecipeId();
+      const ingredients = new Ingredients({ tomato: 2 });
+
+      plate.assignRecipe(recipeId, 'Recipe', ingredients);
+      plate.clearDomainEvents();
+      plate.requestIngredients();
+
+      expect(plate.getStatus().getValue()).toBe(PlateStatusEnum.REQUESTING_INGREDIENTS);
+    });
+
+    it('should emit IngredientsRequestedEvent', () => {
+      const plate = new Plate(plateId, orderReference);
+      const recipeId = new RecipeId();
+      const ingredients = new Ingredients({ tomato: 2 });
+
+      plate.assignRecipe(recipeId, 'Recipe', ingredients);
+      plate.clearDomainEvents();
+      plate.requestIngredients();
+
+      const events = plate.getDomainEvents();
+      expect(events).toHaveLength(1);
+      expect(events[0].eventName).toBe('IngredientsRequestedEvent');
+    });
+
+    it('should throw error if plate is not ASSIGNED', () => {
+      const plate = new Plate(plateId, orderReference);
+
+      expect(() => plate.requestIngredients())
+        .toThrow('Plate must be assigned before requesting ingredients');
+    });
+  });
+
+  describe('startCooking', () => {
+    it('should start cooking for plate with requested ingredients', () => {
+      const plate = new Plate(plateId, orderReference);
+      const recipeId = new RecipeId();
+      const ingredients = new Ingredients({ tomato: 2 });
+
+      plate.assignRecipe(recipeId, 'Recipe', ingredients);
+      plate.requestIngredients();
+      plate.startCooking();
+
+      expect(plate.getStatus().getValue()).toBe(PlateStatusEnum.COOKING);
+      expect(plate.getCookingAt()).toBeInstanceOf(Date);
+    });
+
+    it('should throw error if ingredients not requested', () => {
+      const plate = new Plate(plateId, orderReference);
+
+      expect(() => plate.startCooking())
+        .toThrow('Cannot start cooking: ingredients not requested');
+    });
+  });
+
+  describe('markAsReady', () => {
+    it('should mark COOKING plate as READY', () => {
+      const plate = new Plate(plateId, orderReference);
+      const recipeId = new RecipeId();
+      const ingredients = new Ingredients({ tomato: 2 });
+
+      plate.assignRecipe(recipeId, 'Recipe', ingredients);
+      plate.requestIngredients();
+      plate.startCooking();
+      plate.clearDomainEvents();
+      plate.markAsReady();
+
+      expect(plate.getStatus().getValue()).toBe(PlateStatusEnum.READY);
+      expect(plate.getReadyAt()).toBeInstanceOf(Date);
+    });
+
+    it('should emit PlateReadyEvent', () => {
+      const plate = new Plate(plateId, orderReference);
+      const recipeId = new RecipeId();
+      const ingredients = new Ingredients({ tomato: 2 });
+
+      plate.assignRecipe(recipeId, 'Recipe', ingredients);
+      plate.requestIngredients();
+      plate.startCooking();
+      plate.clearDomainEvents();
+      plate.markAsReady();
+
+      const events = plate.getDomainEvents();
+      expect(events).toHaveLength(1);
+      expect(events[0].eventName).toBe('PlateReadyEvent');
+    });
+
+    it('should throw error if plate is not COOKING', () => {
+      const plate = new Plate(plateId, orderReference);
+
+      expect(() => plate.markAsReady())
+        .toThrow('Can only mark cooking plates as ready');
+    });
+  });
+
+  describe('markAsFailed', () => {
+    it('should mark plate as FAILED with reason', () => {
+      const plate = new Plate(plateId, orderReference);
+      const reason = 'Ingredients not available';
+
+      plate.markAsFailed(reason);
+
+      expect(plate.getStatus().getValue()).toBe(PlateStatusEnum.FAILED);
+      expect(plate.getFailureReason()).toBe(reason);
+    });
+
+    it('should emit PlateFailedEvent', () => {
+      const plate = new Plate(plateId, orderReference);
+
+      plate.clearDomainEvents();
+      plate.markAsFailed('Test failure');
+
+      const events = plate.getDomainEvents();
+      expect(events).toHaveLength(1);
+      expect(events[0].eventName).toBe('PlateFailedEvent');
+    });
+
+    it('should throw error if already READY', () => {
+      const plate = new Plate(plateId, orderReference);
+      const recipeId = new RecipeId();
+      const ingredients = new Ingredients({ tomato: 2 });
+
+      plate.assignRecipe(recipeId, 'Recipe', ingredients);
+      plate.requestIngredients();
+      plate.startCooking();
+      plate.markAsReady();
+
+      expect(() => plate.markAsFailed('Test'))
+        .toThrow('Cannot mark ready or failed plates as failed');
+    });
+  });
+
+  describe('getRetryCount', () => {
+    it('should return initial retry count as 0', () => {
+      const plate = new Plate(plateId, orderReference);
+
+      expect(plate.getRetryCount()).toBe(0);
+    });
+  });
+
+  describe('Domain Events', () => {
+    it('should accumulate multiple events', () => {
+      const plate = new Plate(plateId, orderReference);
+      const recipeId = new RecipeId();
+      const ingredients = new Ingredients({ tomato: 2 });
+
+      plate.assignRecipe(recipeId, 'Recipe', ingredients);
+      plate.requestIngredients();
+
+      const events = plate.getDomainEvents();
+      expect(events).toHaveLength(2);
+    });
+
+    it('should clear events after retrieval', () => {
+      const plate = new Plate(plateId, orderReference);
+      const recipeId = new RecipeId();
+      const ingredients = new Ingredients({ tomato: 2 });
+
+      plate.assignRecipe(recipeId, 'Recipe', ingredients);
+      plate.clearDomainEvents();
+
+      const events = plate.getDomainEvents();
+      expect(events).toHaveLength(0);
+    });
+  });
+
+  describe('fromPrimitives', () => {
+    it('should reconstruct Plate from primitives', () => {
+      const primitives = {
+        id: 'plate-123',
+        orderId: 'order-456',
+        orderItemId: 'item-789',
+        recipeId: 'recipe-abc',
+        recipeName: 'Test Recipe',
+        ingredients: { tomato: 2, onion: 1 },
+        status: PlateStatusEnum.COOKING,
+        createdAt: new Date().toISOString(),
+        assignedAt: new Date().toISOString(),
+        cookingAt: new Date().toISOString(),
+        readyAt: null,
+        failureReason: null,
+        retryCount: 0,
+      };
+
+      const plate = Plate.fromPrimitives(primitives);
+
+      expect(plate.getId().getValue()).toBe('plate-123');
+      expect(plate.getRecipeId()?.getValue()).toBe('recipe-abc');
+      expect(plate.getRecipeName()).toBe('Test Recipe');
+      expect(plate.getStatus().getValue()).toBe(PlateStatusEnum.COOKING);
+    });
+  });
+
+  describe('toPrimitives', () => {
+    it('should convert Plate to primitives', () => {
+      const plate = new Plate(plateId, orderReference);
+      const recipeId = new RecipeId();
+      const ingredients = new Ingredients({ tomato: 2 });
+
+      plate.assignRecipe(recipeId, 'Recipe', ingredients);
+
+      const primitives = plate.toPrimitives();
+
+      expect(primitives.id).toBe(plateId.getValue());
+      expect(primitives.orderId).toBe('order-123');
+      expect(primitives.orderItemId).toBe('item-456');
+      expect(primitives.recipeId).toBe(recipeId.getValue());
+      expect(primitives.status).toBe(PlateStatusEnum.ASSIGNED);
+    });
+  });
+});

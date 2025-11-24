@@ -8,8 +8,9 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { dependencies } from '../../src/infrastructure/config/dependencies.js';
 import { PlateStatusEnum } from '../../src/domain/value-objects/PlateStatus.js';
 import { logger } from '../../src/infrastructure/logging/Logger.js';
+import { withMetrics } from '../../src/infrastructure/metrics/MetricsMiddleware.js';
 
-export default async function handler(
+async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
@@ -60,3 +61,5 @@ export default async function handler(
     });
   }
 }
+
+export default withMetrics(handler);

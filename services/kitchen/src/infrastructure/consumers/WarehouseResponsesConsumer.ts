@@ -16,6 +16,7 @@ import { logger } from '../logging/Logger.js';
 import { PlateRepository } from '../../domain/repositories/PlateRepository.js';
 import { PlateId } from '../../domain/value-objects/PlateId.js';
 import { EventPublisher } from '../../application/ports/out/EventPublisher.js';
+import { metricsService } from '../metrics/MetricsService.js';
 
 export interface IngredientsResponsePayload {
   plateId: string;
@@ -146,6 +147,9 @@ export class WarehouseResponsesConsumer {
     messageId: string,
     fields: Record<string, string>
   ): Promise<void> {
+    const startTime = Date.now();
+    let hasError = false;
+
     try {
       const data: IngredientsResponsePayload = {
         plateId: fields.plateId,
@@ -173,8 +177,30 @@ export class WarehouseResponsesConsumer {
       // Acknowledge message
       await this.redis.xack(this.streamName, this.consumerGroup, messageId);
 
+      // Record metrics
+      const duration = (Date.now() - startTime) / 1000;
+      metricsService.recordEventConsumed(
+        'IngredientsResponse',
+        this.streamName,
+        this.consumerGroup,
+        duration,
+        false
+      );
+
       logger.debug('Warehouse response acknowledged', { messageId });
     } catch (error) {
+      hasError = true;
+
+      // Record error metrics
+      const duration = (Date.now() - startTime) / 1000;
+      metricsService.recordEventConsumed(
+        'IngredientsResponse',
+        this.streamName,
+        this.consumerGroup,
+        duration,
+        true
+      );
+
       logger.error('Failed to process warehouse response', error as Error, {
         messageId,
       });
@@ -221,6 +247,17 @@ export class WarehouseResponsesConsumer {
       }
       plate.clearDomainEvents();
 
+      // Record metrics
+      metricsService.recordIngredientsAvailable(data.plateId, plate.getRecipeId()?.getValue() || 'unknown');
+      if (plate.getRecipeId() && plate.getAssignedAt() && plate.getReadyAt()) {
+        const cookingTime = (plate.getReadyAt()!.getTime() - plate.getAssignedAt()!.getTime()) / 1000;
+        metricsService.recordPlateReady(
+          plate.getRecipeId()!.getValue(),
+          plate.getRecipeName() || 'unknown',
+          cookingTime
+        );
+      }
+
       logger.info('Plate ready', {
         plateId: data.plateId,
         orderItemId: data.orderItemId,
@@ -263,6 +300,14 @@ export class WarehouseResponsesConsumer {
         await this.eventPublisher.publish(event);
       }
       plate.clearDomainEvents();
+
+      // Record metrics
+      metricsService.recordIngredientsUnavailable(
+        data.plateId,
+        plate.getRecipeId()?.getValue() || 'unknown',
+        reason
+      );
+      metricsService.recordPlateFailed(reason);
 
       logger.warn('Plate failed due to unavailable ingredients', {
         plateId: data.plateId,

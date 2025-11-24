@@ -21,10 +21,17 @@ export default {
     '!src/**/*.d.ts',
     '!src/types/**',
     '!src/index.ts',
+    '!src/generated/**',
   ],
   coverageDirectory: 'coverage',
-  coverageReporters: ['text', 'lcov', 'html'],
-  setupFilesAfterEnv: ['<rootDir>/__tests__/setup.ts'],
+  coverageReporters: ['text', 'lcov', 'html', 'json-summary'],
+  coverageThreshold: {
+    global: {
+      branches: 70,
+      functions: 70,
+      statements: 70,
+    },
+  },
   testTimeout: 10000,
   verbose: true,
 };

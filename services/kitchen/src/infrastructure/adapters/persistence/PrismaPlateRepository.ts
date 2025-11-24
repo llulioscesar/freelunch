@@ -10,11 +10,13 @@ import { PlateId } from '../../../domain/value-objects/PlateId.js';
 import { PlateStatusEnum } from '../../../domain/value-objects/PlateStatus.js';
 import { PlateRepository } from '../../../domain/repositories/PlateRepository.js';
 import { logger } from '../../logging/Logger.js';
+import { metricsService } from '../../metrics/MetricsService.js';
 
 export class PrismaPlateRepository implements PlateRepository {
   constructor(private readonly prisma: BasePrismaClient) {}
 
   async save(plate: Plate): Promise<void> {
+    const startTime = Date.now();
     const data = plate.toPrimitives();
 
     await this.prisma.plate.upsert({
@@ -47,13 +49,21 @@ export class PrismaPlateRepository implements PlateRepository {
       },
     });
 
+    const duration = (Date.now() - startTime) / 1000;
+    metricsService.recordDatabaseQuery('plate_save', duration);
+
     logger.logRepositoryOperation('save', 'Plate', data.id);
   }
 
   async findById(id: PlateId): Promise<Plate | null> {
+    const startTime = Date.now();
+
     const record = await this.prisma.plate.findUnique({
       where: { id: id.getValue() },
     });
+
+    const duration = (Date.now() - startTime) / 1000;
+    metricsService.recordDatabaseQuery('plate_findById', duration);
 
     if (!record) {
       return null;

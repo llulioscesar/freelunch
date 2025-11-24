@@ -12,6 +12,7 @@ import { EventPublisher } from '../../../application/ports/out/EventPublisher.js
 import { DomainEvent } from '../../../domain/events/DomainEvent.js';
 import { RedisClient } from '../cache/RedisClient.js';
 import { logger } from '../../logging/Logger.js';
+import { metricsService } from '../../metrics/MetricsService.js';
 
 export class RedisStreamEventPublisher implements EventPublisher {
   private redis;
@@ -33,6 +34,9 @@ export class RedisStreamEventPublisher implements EventPublisher {
         '*', // Auto-generate ID (timestamp-sequence)
         eventData
       );
+
+      // Record metrics
+      metricsService.recordEventPublished(event.eventName, this.streamName);
 
       logger.info(`Event published to stream`, {
         eventType: event.eventName,
@@ -66,6 +70,12 @@ export class RedisStreamEventPublisher implements EventPublisher {
 
     try {
       await pipeline.exec();
+
+      // Record metrics for each event
+      for (const event of events) {
+        metricsService.recordEventPublished(event.eventName, this.streamName);
+      }
+
       logger.info(`Batch published ${events.length} events to stream`, {
         streamName: this.streamName,
         eventCount: events.length,

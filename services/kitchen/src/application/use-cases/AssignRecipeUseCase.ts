@@ -8,6 +8,7 @@ import { EventPublisher } from '../ports/out/EventPublisher.js';
 import { WarehouseClient, IngredientsRequestPayload } from '../ports/out/WarehouseClient.js';
 import { PlateId } from '../../domain/value-objects/PlateId.js';
 import { logger } from '../../infrastructure/logging/Logger.js';
+import { metricsService } from '../../infrastructure/metrics/MetricsService.js';
 
 export interface AssignRecipeInput {
   plateId: string;
@@ -30,6 +31,7 @@ export class AssignRecipeUseCase {
   ) {}
 
   async execute(input: AssignRecipeInput): Promise<AssignRecipeOutput> {
+    const startTime = Date.now();
     const useCaseName = 'AssignRecipe';
 
     logger.logUseCaseStart(useCaseName, input);
@@ -64,6 +66,16 @@ export class AssignRecipeUseCase {
       }
       plate.clearDomainEvents();
 
+      // Record metrics
+      metricsService.recordPlateAssigned(
+        recipe.getId().getValue(),
+        recipe.getName()
+      );
+      metricsService.recordRecipeUsage(
+        recipe.getId().getValue(),
+        recipe.getName()
+      );
+
       logger.info(`Recipe assigned to plate`, {
         plateId: input.plateId,
         recipeId: recipe.getId().getValue(),
@@ -93,11 +105,24 @@ export class AssignRecipeUseCase {
 
       await this.warehouseClient.requestIngredients(payload);
 
+      // Record ingredient request metrics
+      metricsService.recordIngredientsRequested(
+        input.plateId,
+        recipe.getId().getValue(),
+        Object.keys(recipe.getIngredients().toPrimitives()).length
+      );
+
       logger.info('Ingredients requested from Warehouse', {
         plateId: input.plateId,
         recipeId: recipe.getId().getValue(),
         recipeName: recipe.getName(),
       });
+
+      const duration = Date.now() - startTime;
+      const durationSeconds = duration / 1000;
+
+      // Record use case execution metrics
+      metricsService.recordUseCaseExecution(useCaseName, durationSeconds, true);
 
       return {
         success: true,
@@ -107,6 +132,12 @@ export class AssignRecipeUseCase {
         ingredients: recipe.getIngredients().toPrimitives(),
       };
     } catch (error: any) {
+      const duration = Date.now() - startTime;
+      const durationSeconds = duration / 1000;
+
+      // Record failed use case execution
+      metricsService.recordUseCaseExecution(useCaseName, durationSeconds, false);
+
       logger.logUseCaseError(useCaseName, error);
       throw error;
     }

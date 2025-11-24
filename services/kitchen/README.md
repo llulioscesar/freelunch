@@ -23,10 +23,11 @@ kitchen/
 │   ├── adapters/
 │   │   ├── persistence/  # Prisma repositories
 │   │   ├── messaging/    # Redis Streams
-│   │   └── http/         # Warehouse HTTP client
+│   │   └── cache/        # Redis client
 │   ├── consumers/    # Consumidores de eventos
 │   ├── config/       # Dependency Injection
-│   └── logging/      # Logger
+│   ├── logging/      # Logger
+│   └── metrics/      # MetricsService (Prometheus-style)
 │
 └── presentation/     # API REST
     └── api/          # Endpoints serverless
@@ -128,8 +129,35 @@ npm run test:watch
 GET  /                  # Health check
 GET  /api/recipes       # Lista de recetas disponibles
 GET  /api/plates        # Platos en preparación
-POST /api/workers/order-consumer  # Worker para consumir eventos de Orders
+GET  /api/metrics       # Métricas del servicio (JSON o Prometheus)
+POST /api/workers/order-consumer      # Worker para consumir eventos de Orders
+POST /api/workers/warehouse-consumer  # Worker para consumir respuestas de Warehouse
 ```
+
+### Métricas
+
+El endpoint `/api/metrics` retorna métricas en dos formatos:
+
+**Prometheus (default):**
+```bash
+curl https://kitchen.vercel.app/api/metrics
+```
+
+**JSON:**
+```bash
+curl https://kitchen.vercel.app/api/metrics?format=json
+```
+
+**Métricas disponibles:**
+- HTTP requests (total, duration, status codes)
+- Database queries (total, duration, errors)
+- Event publishing/consumption (total, duration, errors)
+- Use case executions (total, duration, success/failure)
+- Business metrics:
+  - Plates created, assigned, ready, failed
+  - Recipes usage by recipe
+  - Cooking time by recipe
+  - Ingredients requests (available/unavailable)
 
 ## 🔄 Flujo de Eventos
 

@@ -12,6 +12,7 @@ import {
   ProcessOrderResponseDTO,
 } from '../dto/ProcessOrderDTO';
 import { logger } from '../../infrastructure/logging/Logger';
+import { metricsService } from '../../infrastructure/metrics/MetricsService';
 
 export class ProcessOrderUseCase {
   constructor(
@@ -47,6 +48,9 @@ export class ProcessOrderUseCase {
         await this.plateRepository.save(plate);
         plates.push(plate);
 
+        // Record metrics
+        metricsService.recordPlateCreated(dto.orderId);
+
         logger.info(`Plate created for order item`, {
           plateId: plateId.getValue(),
           orderItemId: item.itemId,
@@ -56,6 +60,11 @@ export class ProcessOrderUseCase {
       logger.info(`Created ${plates.length} plates for order ${dto.orderId}`);
 
       const duration = Date.now() - startTime;
+      const durationSeconds = duration / 1000;
+
+      // Record use case execution metrics
+      metricsService.recordUseCaseExecution(useCaseName, durationSeconds, true);
+
       logger.logUseCaseEnd(useCaseName, duration, {
         platesCreated: plates.length,
       });
@@ -72,6 +81,12 @@ export class ProcessOrderUseCase {
         message: `Created ${plates.length} plates for preparation`,
       };
     } catch (error: any) {
+      const duration = Date.now() - startTime;
+      const durationSeconds = duration / 1000;
+
+      // Record failed use case execution
+      metricsService.recordUseCaseExecution(useCaseName, durationSeconds, false);
+
       logger.logUseCaseError(useCaseName, error);
       throw error;
     }
