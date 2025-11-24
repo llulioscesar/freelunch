@@ -12,6 +12,7 @@ const __dirname = dirname(__filename);
 
 const clientDir = join(__dirname, '..', 'src', 'generated', 'prisma', 'client');
 const indexPath = join(clientDir, 'index.ts');
+const packageJsonPath = join(clientDir, 'package.json');
 
 const indexContent = `/**
  * Re-export from client.ts to allow importing from the client directory directly
@@ -21,10 +22,17 @@ export { PrismaClient } from './client.js';
 export type { Prisma } from './client.js';
 `;
 
+const packageJsonContent = JSON.stringify({
+  type: 'module',
+  main: './index.js',
+  types: './index.d.ts'
+}, null, 2);
+
 try {
   writeFileSync(indexPath, indexContent, 'utf8');
-  console.log('✅ Generated index.ts for Prisma client');
+  writeFileSync(packageJsonPath, packageJsonContent, 'utf8');
+  console.log('✅ Generated index.ts and package.json for Prisma client');
 } catch (error) {
-  console.error('❌ Failed to generate index.ts:', error);
+  console.error('❌ Failed to generate files:', error);
   process.exit(1);
 }
