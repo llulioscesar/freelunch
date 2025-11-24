@@ -6,8 +6,9 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "vercel dev --listen 3002",
-    "build": "prisma generate && tsc && tsc-alias",
-    "vercel-build": "prisma generate && tsc && tsc-alias",
+    "build": "prisma generate && node scripts/postgenerate.js && tsc && tsc-alias",
+    "vercel-build": "prisma generate && node scripts/postgenerate.js && tsc && tsc-alias",
+    "pretest": "prisma generate && node scripts/postgenerate.js",
     "test": "jest",
     "test:coverage": "jest --coverage",
     "test:unit": "jest --testPathPattern=__tests__/unit",
@@ -17,7 +18,8 @@
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
     "typecheck": "tsc --noEmit",
-    "prisma:generate": "prisma generate",
+    "postgenerate": "node scripts/postgenerate.js",
+    "prisma:generate": "prisma generate && node scripts/postgenerate.js",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio"
