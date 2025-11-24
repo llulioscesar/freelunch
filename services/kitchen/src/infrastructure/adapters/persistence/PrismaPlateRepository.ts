@@ -4,7 +4,7 @@
  *
  * Implements PlateRepository interface using Prisma ORM
  */
-import { PrismaClient as BasePrismaClient } from '../../../generated/prisma/client/client.js';
+import { PrismaClient as BasePrismaClient } from '../../../generated/prisma/client/client';
 import { Plate } from '../../../domain/entities/Plate';
 import { PlateId } from '../../../domain/value-objects/PlateId';
 import { PlateStatusEnum } from '../../../domain/value-objects/PlateStatus';
