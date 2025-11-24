@@ -17,7 +17,8 @@ const poolConfig: pg.PoolConfig = {
 if (process.env.DATABASE_CA_CERT) {
   poolConfig.ssl = {
     rejectUnauthorized: true,
-    ca: process.env.DATABASE_CA_CERT,
+    // Replace literal \n with actual newlines if needed
+    ca: process.env.DATABASE_CA_CERT.replace(/\\n/g, '\n'),
   };
 }
 
