@@ -1,44 +1,52 @@
 /**
  * Port: WarehouseClient
- * Interface for communicating with Warehouse service (Hexagonal Architecture)
+ * Interface for communicating with Warehouse service via Redis Streams
+ *
+ * Pattern: Asynchronous communication through events
+ * - Kitchen publishes to warehouse:requests stream
+ * - Kitchen consumes from warehouse:responses stream
  */
 
-export interface IngredientRequest {
-  ingredient: string;
-  quantity: number;
-}
-
-export interface IngredientResponse {
-  ingredient: string;
-  requestedQuantity: number;
-  availableQuantity: number;
-  success: boolean;
-}
-
-export interface IngredientsRequestResult {
+export interface IngredientsRequestPayload {
   plateId: string;
-  allAvailable: boolean;
-  ingredients: IngredientResponse[];
-  totalRequested: number;
-  totalAvailable: number;
+  orderItemId: string;
+  recipeId: string;
+  recipeName: string;
+  ingredients: Record<string, number>;
+  requestedAt: string;
+}
+
+export interface IngredientsResponsePayload {
+  plateId: string;
+  orderItemId: string;
+  success: boolean;
+  ingredients: Record<string, number>;
+  availableIngredients?: Record<string, number>;
+  unavailableIngredients?: string[];
+  message?: string;
+  processedAt: string;
 }
 
 export interface WarehouseClient {
   /**
-   * Request ingredients from warehouse
+   * Request ingredients from warehouse (async via Redis Streams)
+   * Publishes event to warehouse:requests stream
    */
-  requestIngredients(
-    plateId: string,
-    ingredients: Map<string, number>
-  ): Promise<IngredientsRequestResult>;
+  requestIngredients(payload: IngredientsRequestPayload): Promise<void>;
 
   /**
-   * Check ingredient availability without reserving
+   * Initialize consumer to listen for warehouse responses
+   * Consumes from warehouse:responses stream
    */
-  checkAvailability(ingredientName: string): Promise<number>;
+  initialize(): Promise<void>;
 
   /**
-   * Get warehouse health status
+   * Start consuming responses from warehouse
    */
-  healthCheck(): Promise<boolean>;
+  startConsuming(): Promise<void>;
+
+  /**
+   * Stop consuming
+   */
+  stopConsuming(): Promise<void>;
 }
