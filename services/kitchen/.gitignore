@@ -6,6 +6,9 @@ package-lock.json
 dist/
 *.tsbuildinfo
 
+# Prisma generated files
+src/generated/
+
 # Environment
 .env
 .env.local
