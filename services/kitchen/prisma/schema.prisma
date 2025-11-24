@@ -1,0 +1,60 @@
+// Prisma Schema for Kitchen Service
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Recipe entity - 6 recipes available for random selection
+model Recipe {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  ingredients Json     // { "tomato": 2, "cheese": 1, "meat": 1 }
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  plates      Plate[]
+
+  @@index([name])
+}
+
+// Plate entity - Individual dish being prepared
+model Plate {
+  id            String    @id @default(cuid())
+
+  // Reference to Orders service (external)
+  orderId       String
+  orderItemId   String
+
+  // Recipe assignment
+  recipeId      String?
+  recipe        Recipe?   @relation(fields: [recipeId], references: [id])
+  recipeName    String?
+  ingredients   Json?     // Required ingredients with quantities
+
+  // Status tracking
+  status        String    @default("PENDING")
+
+  // Timestamps
+  createdAt     DateTime  @default(now())
+  assignedAt    DateTime?
+  cookingAt     DateTime?
+  readyAt       DateTime?
+  updatedAt     DateTime  @updatedAt
+
+  // Failure tracking
+  failureReason String?
+  retryCount    Int       @default(0)
+
+  @@index([orderId])
+  @@index([orderItemId])
+  @@index([status])
+  @@index([createdAt])
+  @@unique([orderItemId])
+}
