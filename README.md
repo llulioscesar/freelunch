@@ -182,12 +182,12 @@ freelunch/
 - **Responsabilidad**: Selección de recetas y coordinación de preparación
 - **Eventos emitidos**: `RECIPE_SELECTED`, `INGREDIENTS_REQUESTED`, `DISH_PREPARED`
 - **Recetas disponibles**:
-  - 🍔 Hamburguesa Clásica
-  - 🥗 Ensalada César
-  - 🍗 Pollo con Arroz
-  - 🥔 Papas Bravas
-  - 🍚 Bowl de Arroz
-  - 🥪 Sandwich Especial
+    - 🍔 Hamburguesa Clásica
+    - 🥗 Ensalada César
+    - 🍗 Pollo con Arroz
+    - 🥔 Papas Bravas
+    - 🍚 Bowl de Arroz
+    - 🥪 Sandwich Especial
 
 ### 3. Warehouse Service
 - **Responsabilidad**: Control de inventario y gestión de stock
@@ -201,10 +201,10 @@ freelunch/
 
 ### 5. AI Service (Bonus)
 - **Responsabilidad**: Recomendaciones inteligentes basadas en:
-  - Inventario disponible
-  - Historial de pedidos
-  - Predicción de demanda
-  - Optimización de compras
+    - Inventario disponible
+    - Historial de pedidos
+    - Predicción de demanda
+    - Optimización de compras
 
 ## 💾 Instalación y Configuración
 
@@ -364,19 +364,19 @@ sequenceDiagram
 El sistema utiliza **Google Gemini** para:
 
 1. **Recomendación de Recetas**
-   - Basado en inventario actual
-   - Optimización de uso de ingredientes
-   - Minimización de desperdicios
+    - Basado en inventario actual
+    - Optimización de uso de ingredientes
+    - Minimización de desperdicios
 
 2. **Predicción de Demanda**
-   - Análisis de patrones históricos
-   - Predicción de picos de demanda
-   - Sugerencias de pre-compra
+    - Análisis de patrones históricos
+    - Predicción de picos de demanda
+    - Sugerencias de pre-compra
 
 3. **Optimización de Compras**
-   - Mejor momento para comprar
-   - Cantidades óptimas
-   - Ahorro de costos
+    - Mejor momento para comprar
+    - Cantidades óptimas
+    - Ahorro de costos
 
 ## 🎮 Demo
 
@@ -390,24 +390,24 @@ Password: demo123
 ### Funcionalidades Principales
 
 1. **Dashboard Gerencial**
-   - Vista en tiempo real de pedidos
-   - Estado del inventario
-   - Métricas y estadísticas
+    - Vista en tiempo real de pedidos
+    - Estado del inventario
+    - Métricas y estadísticas
 
 2. **Gestión de Pedidos**
-   - Crear pedidos masivos
-   - Seguimiento en tiempo real
-   - Historial completo
+    - Crear pedidos masivos
+    - Seguimiento en tiempo real
+    - Historial completo
 
 3. **Control de Inventario**
-   - Vista actual de stock
-   - Alertas de bajo inventario
-   - Historial de movimientos
+    - Vista actual de stock
+    - Alertas de bajo inventario
+    - Historial de movimientos
 
 4. **Panel de IA**
-   - Recomendaciones en tiempo real
-   - Predicciones de demanda
-   - Insights de optimización
+    - Recomendaciones en tiempo real
+    - Predicciones de demanda
+    - Insights de optimización
 
 ## 📊 Métricas y Monitoreo
 

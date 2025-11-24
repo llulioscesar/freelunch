@@ -1,0 +1,21 @@
+/**
+ * Base Domain Event
+ * All domain events should extend this class
+ */
+
+export abstract class DomainEvent {
+  public readonly occurredOn: Date;
+  public readonly eventId: string;
+
+  constructor(eventId?: string) {
+    this.occurredOn = new Date();
+    this.eventId = eventId || this.generateEventId();
+  }
+
+  private generateEventId(): string {
+    return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  abstract get eventName(): string;
+  abstract toPrimitives(): any;
+}
