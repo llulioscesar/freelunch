@@ -3,6 +3,22 @@
  * Presentation layer for service health check
  */
 import { VercelRequest, VercelResponse } from '@vercel/node';
+import { HealthCheckService } from '../../application/services/HealthCheckService.js';
+import { SystemHealthChecker } from '../../infrastructure/adapters/health/SystemHealthChecker.js';
+
+// Singleton instance for health checker
+let healthChecker: SystemHealthChecker | null = null;
+let healthCheckService: HealthCheckService | null = null;
+
+function getHealthCheckService(): HealthCheckService {
+  if (!healthChecker) {
+    healthChecker = new SystemHealthChecker();
+  }
+  if (!healthCheckService) {
+    healthCheckService = new HealthCheckService(healthChecker);
+  }
+  return healthCheckService;
+}
 
 export default async function handler(
   req: VercelRequest,
@@ -13,12 +29,23 @@ export default async function handler(
   }
 
   try {
-    return res.status(200).json({
+    const service = getHealthCheckService();
+    const healthResult = await service.performHealthCheck();
+
+    // Determine HTTP status code based on health status
+    const statusCode =
+      healthResult.status === 'healthy' ? 200 :
+      healthResult.status === 'degraded' ? 200 :
+      503;
+
+    return res.status(statusCode).json({
       service: 'kitchen-service',
-      status: 'healthy',
-      version: '0.0.1',
+      status: healthResult.status,
+      version: healthResult.version,
       architecture: 'hexagonal-ddd',
-      timestamp: new Date().toISOString(),
+      timestamp: healthResult.timestamp,
+      uptime: healthResult.uptime,
+      checks: healthResult.checks,
       endpoints: [
         'GET /api/recipes - List available recipes',
         'GET /api/plates - List plates (supports ?status= and ?orderId= filters)',
@@ -27,7 +54,7 @@ export default async function handler(
       layers: {
         domain: 'Ready',
         application: 'Ready',
-        infrastructure: 'Ready',
+        infrastructure: healthResult.checks.database.status === 'up' ? 'Ready' : 'Degraded',
         presentation: 'Ready',
       },
     });
