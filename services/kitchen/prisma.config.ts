@@ -3,7 +3,7 @@
  * Prisma ORM v7 configuration file
  */
 import 'dotenv/config';
-import { defineConfig, env } from 'prisma/config';
+import { defineConfig } from 'prisma/config';
 
 export default defineConfig({
   // Schema location
@@ -18,7 +18,7 @@ export default defineConfig({
 
   // Database connection
   datasource: {
-    // Type-safe env() helper for environment variables
-    url: env('DATABASE_URL'),
+    // Use process.env with fallback for CI/build environments
+    url: process.env.DATABASE_URL || 'postgresql://dummy:dummy@localhost:5432/dummy',
   },
 });
