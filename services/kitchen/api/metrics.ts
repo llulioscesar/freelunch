@@ -1,11 +1,10 @@
 /**
  * API Endpoint: Metrics
- * Kitchen Service
  *
  * Exposes Prometheus-compatible metrics for monitoring and observability.
  *
  * Usage:
- * - GET /api/metrics - Returns metrics in Prometheus format (default)
+ * - GET /api/metrics - Returns metrics in Prometheus format
  * - GET /api/metrics?format=json - Returns metrics in JSON format
  *
  * Integration:
@@ -13,8 +12,8 @@
  * - Datadog: Use Prometheus integration
  * - Custom scraper: Poll this endpoint every 30-60 seconds
  */
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { metricsService } from '../src/infrastructure/metrics/MetricsService.js';
+import { VercelRequest, VercelResponse } from '@vercel/node';
+import { metricsService } from '../src/infrastructure/metrics/MetricsService';
 
 export default async function handler(
   req: VercelRequest,
@@ -57,7 +56,7 @@ export default async function handler(
     }
   } catch (error: any) {
     return res.status(500).json({
-      error: 'Failed to export metrics',
+        error: 'Failed to export metrics',
       message: error.message,
     });
   }

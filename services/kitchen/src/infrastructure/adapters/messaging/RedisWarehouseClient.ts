@@ -11,12 +11,12 @@
  * 4. Kitchen consumes response via WarehouseResponsesConsumer
  */
 import { Redis } from '@upstash/redis';
-import { RedisClient } from '../cache/RedisClient.js';
+import { RedisClient } from '../cache/RedisClient';
 import {
   WarehouseClient,
   IngredientsRequestPayload,
-} from '../../../application/ports/out/WarehouseClient.js';
-import { logger } from '../../logging/Logger.js';
+} from '../../../application/ports/out/WarehouseClient';
+import { logger } from '../../logging/Logger';
 
 export class RedisWarehouseClient implements WarehouseClient {
   private redis: Redis;

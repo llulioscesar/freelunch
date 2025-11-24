@@ -11,12 +11,12 @@
  * Uses Redis Streams consumer groups for guaranteed delivery
  */
 import { Redis } from '@upstash/redis';
-import { RedisClient } from '../adapters/cache/RedisClient.js';
-import { logger } from '../logging/Logger.js';
-import { PlateRepository } from '../../domain/repositories/PlateRepository.js';
-import { PlateId } from '../../domain/value-objects/PlateId.js';
-import { EventPublisher } from '../../application/ports/out/EventPublisher.js';
-import { metricsService } from '../metrics/MetricsService.js';
+import { RedisClient } from '../adapters/cache/RedisClient';
+import { logger } from '../logging/Logger';
+import { PlateRepository } from '../../domain/repositories/PlateRepository';
+import { PlateId } from '../../domain/value-objects/PlateId';
+import { EventPublisher } from '../../application/ports/out/EventPublisher';
+import { metricsService } from '../metrics/MetricsService';
 
 export interface IngredientsResponsePayload {
   plateId: string;
@@ -148,7 +148,6 @@ export class WarehouseResponsesConsumer {
     fields: Record<string, string>
   ): Promise<void> {
     const startTime = Date.now();
-    let _hasError = false;
 
     try {
       const data: IngredientsResponsePayload = {
@@ -189,8 +188,6 @@ export class WarehouseResponsesConsumer {
 
       logger.debug('Warehouse response acknowledged', { messageId });
     } catch (error) {
-      _hasError = true;
-
       // Record error metrics
       const duration = (Date.now() - startTime) / 1000;
       metricsService.recordEventConsumed(
@@ -218,7 +215,7 @@ export class WarehouseResponsesConsumer {
       // Find plate
       const plate = await this.plateRepository.findById(new PlateId(data.plateId));
       if (!plate) {
-        logger.error('Plate not found for warehouse response', {
+        logger.error('Plate not found for warehouse response', undefined, {
           plateId: data.plateId,
         });
         return;
@@ -280,7 +277,7 @@ export class WarehouseResponsesConsumer {
       // Find plate
       const plate = await this.plateRepository.findById(new PlateId(data.plateId));
       if (!plate) {
-        logger.error('Plate not found for warehouse response', {
+        logger.error('Plate not found for warehouse response', undefined, {
           plateId: data.plateId,
         });
         return;
@@ -342,7 +339,7 @@ export class WarehouseResponsesConsumer {
 
       let processedCount = 0;
 
-      for (const [streamName, streamMessages] of messages) {
+      for (const [streamName, streamMessages] of messages as any) {
         for (const [messageId, fields] of streamMessages) {
           try {
             await this.processMessage(messageId as string, fields);

@@ -13,10 +13,10 @@
  * - Fault tolerance (failed messages stay in pending list)
  */
 import { Redis } from '@upstash/redis';
-import { RedisClient } from '../adapters/cache/RedisClient.js';
-import { ProcessOrderUseCase } from '../../application/use-cases/ProcessOrderUseCase.js';
-import { AssignRecipeUseCase } from '../../application/use-cases/AssignRecipeUseCase.js';
-import { logger } from '../logging/Logger.js';
+import { RedisClient } from '../adapters/cache/RedisClient';
+import { ProcessOrderUseCase } from '../../application/use-cases/ProcessOrderUseCase';
+import { AssignRecipeUseCase } from '../../application/use-cases/AssignRecipeUseCase';
+import { logger } from '../logging/Logger';
 
 export interface OrderCreatedEventPayload {
   eventType: string;
@@ -252,7 +252,7 @@ export class OrderEventsConsumer {
       let processedCount = 0;
 
       // Process each message
-      for (const [streamName, streamMessages] of messages) {
+      for (const [streamName, streamMessages] of messages as any) {
         for (const [messageId, fields] of streamMessages) {
           try {
             await this.processMessage(messageId as string, fields);

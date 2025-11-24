@@ -8,11 +8,11 @@
  * - Consumer groups (multiple consumers can process events)
  * - Message ordering (FIFO within a stream)
  */
-import { EventPublisher } from '../../../application/ports/out/EventPublisher.js';
-import { DomainEvent } from '../../../domain/events/DomainEvent.js';
-import { RedisClient } from '../cache/RedisClient.js';
-import { logger } from '../../logging/Logger.js';
-import { metricsService } from '../../metrics/MetricsService.js';
+import { EventPublisher } from '../../../application/ports/out/EventPublisher';
+import { DomainEvent } from '../../../domain/events/DomainEvent';
+import { RedisClient } from '../cache/RedisClient';
+import { logger } from '../../logging/Logger';
+import { metricsService } from '../../metrics/MetricsService';
 
 export class RedisStreamEventPublisher implements EventPublisher {
   private redis;

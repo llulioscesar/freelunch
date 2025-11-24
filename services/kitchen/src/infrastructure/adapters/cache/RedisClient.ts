@@ -9,7 +9,7 @@
  * Uses Upstash Redis for serverless compatibility
  */
 import { Redis } from '@upstash/redis';
-import { logger } from '../../logging/Logger.js';
+import { logger } from '../../logging/Logger';
 
 export class RedisClient {
   private static instance: Redis | null = null;

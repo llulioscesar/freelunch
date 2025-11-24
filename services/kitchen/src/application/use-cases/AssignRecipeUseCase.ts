@@ -2,13 +2,13 @@
  * Use Case: Assign Recipe
  * Business logic for assigning a random recipe to a plate
  */
-import { PlateRepository } from '../../domain/repositories/PlateRepository.js';
-import { RecipeRepository } from '../../domain/repositories/RecipeRepository.js';
-import { EventPublisher } from '../ports/out/EventPublisher.js';
-import { WarehouseClient, IngredientsRequestPayload } from '../ports/out/WarehouseClient.js';
-import { PlateId } from '../../domain/value-objects/PlateId.js';
-import { logger } from '../../infrastructure/logging/Logger.js';
-import { metricsService } from '../../infrastructure/metrics/MetricsService.js';
+import { PlateRepository } from '../../domain/repositories/PlateRepository';
+import { RecipeRepository } from '../../domain/repositories/RecipeRepository';
+import { EventPublisher } from '../ports/out/EventPublisher';
+import { WarehouseClient, IngredientsRequestPayload } from '../ports/out/WarehouseClient';
+import { PlateId } from '../../domain/value-objects/PlateId';
+import { logger } from '../../infrastructure/logging/Logger';
+import { metricsService } from '../../infrastructure/metrics/MetricsService';
 
 export interface AssignRecipeInput {
   plateId: string;

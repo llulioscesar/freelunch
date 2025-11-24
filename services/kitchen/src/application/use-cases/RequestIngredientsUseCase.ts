@@ -2,14 +2,14 @@
  * Use Case: Request Ingredients
  * Business logic for requesting ingredients from Warehouse
  */
-import { PlateRepository } from '../../domain/repositories/PlateRepository.js';
-import { PlateId } from '../../domain/value-objects/PlateId.js';
+import { PlateRepository } from '../../domain/repositories/PlateRepository';
+import { PlateId } from '../../domain/value-objects/PlateId';
 import {
   WarehouseClient,
   IngredientsRequestPayload,
-} from '../ports/out/WarehouseClient.js';
-import { EventPublisher } from '../ports/out/EventPublisher.js';
-import { logger } from '../../infrastructure/logging/Logger.js';
+} from '../ports/out/WarehouseClient';
+import { EventPublisher } from '../ports/out/EventPublisher';
+import { logger } from '../../infrastructure/logging/Logger';
 
 export interface RequestIngredientsInput {
   plateId: string;

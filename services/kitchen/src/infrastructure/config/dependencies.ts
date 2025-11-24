@@ -4,22 +4,22 @@
  *
  * Configures and provides all dependencies for the application
  */
-import { prismaClient } from '../adapters/persistence/PrismaClient.js';
-import { RecipeRepository } from '../../domain/repositories/RecipeRepository.js';
-import { PlateRepository } from '../../domain/repositories/PlateRepository.js';
-import { EventPublisher } from '../../application/ports/out/EventPublisher.js';
-import { WarehouseClient } from '../../application/ports/out/WarehouseClient.js';
-import { PrismaRecipeRepository } from '../adapters/persistence/PrismaRecipeRepository.js';
-import { PrismaPlateRepository } from '../adapters/persistence/PrismaPlateRepository.js';
-import { RedisStreamEventPublisher } from '../adapters/messaging/RedisStreamEventPublisher.js';
-import { RedisWarehouseClient } from '../adapters/messaging/RedisWarehouseClient.js';
-import { ProcessOrderUseCase } from '../../application/use-cases/ProcessOrderUseCase.js';
-import { AssignRecipeUseCase } from '../../application/use-cases/AssignRecipeUseCase.js';
-import { GetRecipesUseCase } from '../../application/use-cases/GetRecipesUseCase.js';
-import { ListPlatesUseCase } from '../../application/use-cases/ListPlatesUseCase.js';
-import { RequestIngredientsUseCase } from '../../application/use-cases/RequestIngredientsUseCase.js';
-import { OrderEventsConsumer } from '../consumers/OrderEventsConsumer.js';
-import { WarehouseResponsesConsumer } from '../consumers/WarehouseResponsesConsumer.js';
+import { prismaClient } from '../adapters/persistence/PrismaClient';
+import { RecipeRepository } from '../../domain/repositories/RecipeRepository';
+import { PlateRepository } from '../../domain/repositories/PlateRepository';
+import { EventPublisher } from '../../application/ports/out/EventPublisher';
+import { WarehouseClient } from '../../application/ports/out/WarehouseClient';
+import { PrismaRecipeRepository } from '../adapters/persistence/PrismaRecipeRepository';
+import { PrismaPlateRepository } from '../adapters/persistence/PrismaPlateRepository';
+import { RedisStreamEventPublisher } from '../adapters/messaging/RedisStreamEventPublisher';
+import { RedisWarehouseClient } from '../adapters/messaging/RedisWarehouseClient';
+import { ProcessOrderUseCase } from '../../application/use-cases/ProcessOrderUseCase';
+import { AssignRecipeUseCase } from '../../application/use-cases/AssignRecipeUseCase';
+import { GetRecipesUseCase } from '../../application/use-cases/GetRecipesUseCase';
+import { ListPlatesUseCase } from '../../application/use-cases/ListPlatesUseCase';
+import { RequestIngredientsUseCase } from '../../application/use-cases/RequestIngredientsUseCase';
+import { OrderEventsConsumer } from '../consumers/OrderEventsConsumer';
+import { WarehouseResponsesConsumer } from '../consumers/WarehouseResponsesConsumer';
 
 export interface Dependencies {
   // Repositories

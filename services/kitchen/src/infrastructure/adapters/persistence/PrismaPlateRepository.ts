@@ -4,13 +4,13 @@
  *
  * Implements PlateRepository interface using Prisma ORM
  */
-import { PrismaClient as BasePrismaClient } from '../../../generated/prisma/client/client.js';
-import { Plate } from '../../../domain/entities/Plate.js';
-import { PlateId } from '../../../domain/value-objects/PlateId.js';
-import { PlateStatusEnum } from '../../../domain/value-objects/PlateStatus.js';
-import { PlateRepository } from '../../../domain/repositories/PlateRepository.js';
-import { logger } from '../../logging/Logger.js';
-import { metricsService } from '../../metrics/MetricsService.js';
+import { PrismaClient as BasePrismaClient } from '../../../generated/prisma/client/client';
+import { Plate } from '../../../domain/entities/Plate';
+import { PlateId } from '../../../domain/value-objects/PlateId';
+import { PlateStatusEnum } from '../../../domain/value-objects/PlateStatus';
+import { PlateRepository } from '../../../domain/repositories/PlateRepository';
+import { logger } from '../../logging/Logger';
+import { metricsService } from '../../metrics/MetricsService';
 
 export class PrismaPlateRepository implements PlateRepository {
   constructor(private readonly prisma: BasePrismaClient) {}

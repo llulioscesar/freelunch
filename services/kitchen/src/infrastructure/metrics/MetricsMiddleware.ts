@@ -1,12 +1,11 @@
 /**
  * Metrics Middleware
- * Kitchen Service
  *
  * Automatically instruments HTTP requests with metrics collection.
  * Wraps Vercel serverless function handlers.
  */
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { metricsService } from './MetricsService.js';
+import { metricsService } from './MetricsService';
 
 type Handler = (req: VercelRequest, res: VercelResponse) => Promise<void | VercelResponse>;
 
@@ -67,8 +66,8 @@ export function withMetrics(handler: Handler): Handler {
 
 /**
  * Extract endpoint name from URL
- * /api/recipes?foo=bar -> /api/recipes
- * /api/plates?status=READY -> /api/plates
+ * /api/create?foo=bar -> /api/create
+ * /api/status?id=123 -> /api/status
  */
 function getEndpointName(url: string): string {
   try {
