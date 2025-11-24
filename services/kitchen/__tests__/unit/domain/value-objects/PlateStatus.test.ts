@@ -115,4 +115,65 @@ describe('PlateStatus Value Object', () => {
       expect(status1.equals(status2)).toBe(false);
     });
   });
+
+  describe('isFinal', () => {
+    it('should return true for READY status', () => {
+      const status = new PlateStatus(PlateStatusEnum.READY);
+      expect(status.isFinal()).toBe(true);
+    });
+
+    it('should return true for FAILED status', () => {
+      const status = new PlateStatus(PlateStatusEnum.FAILED);
+      expect(status.isFinal()).toBe(true);
+    });
+
+    it('should return false for PENDING status', () => {
+      const status = new PlateStatus(PlateStatusEnum.PENDING);
+      expect(status.isFinal()).toBe(false);
+    });
+
+    it('should return false for COOKING status', () => {
+      const status = new PlateStatus(PlateStatusEnum.COOKING);
+      expect(status.isFinal()).toBe(false);
+    });
+  });
+
+  describe('isInProgress', () => {
+    it('should return true for ASSIGNED status', () => {
+      const status = new PlateStatus(PlateStatusEnum.ASSIGNED);
+      expect(status.isInProgress()).toBe(true);
+    });
+
+    it('should return true for REQUESTING_INGREDIENTS status', () => {
+      const status = new PlateStatus(PlateStatusEnum.REQUESTING_INGREDIENTS);
+      expect(status.isInProgress()).toBe(true);
+    });
+
+    it('should return true for COOKING status', () => {
+      const status = new PlateStatus(PlateStatusEnum.COOKING);
+      expect(status.isInProgress()).toBe(true);
+    });
+
+    it('should return false for PENDING status', () => {
+      const status = new PlateStatus(PlateStatusEnum.PENDING);
+      expect(status.isInProgress()).toBe(false);
+    });
+
+    it('should return false for READY status', () => {
+      const status = new PlateStatus(PlateStatusEnum.READY);
+      expect(status.isInProgress()).toBe(false);
+    });
+
+    it('should return false for FAILED status', () => {
+      const status = new PlateStatus(PlateStatusEnum.FAILED);
+      expect(status.isInProgress()).toBe(false);
+    });
+  });
+
+  describe('toString', () => {
+    it('should return string representation', () => {
+      const status = new PlateStatus(PlateStatusEnum.PENDING);
+      expect(status.toString()).toBe('PENDING');
+    });
+  });
 });

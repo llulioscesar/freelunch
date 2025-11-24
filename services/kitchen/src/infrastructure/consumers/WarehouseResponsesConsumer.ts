@@ -148,7 +148,7 @@ export class WarehouseResponsesConsumer {
     fields: Record<string, string>
   ): Promise<void> {
     const startTime = Date.now();
-    let hasError = false;
+    let _hasError = false;
 
     try {
       const data: IngredientsResponsePayload = {
@@ -189,7 +189,7 @@ export class WarehouseResponsesConsumer {
 
       logger.debug('Warehouse response acknowledged', { messageId });
     } catch (error) {
-      hasError = true;
+      _hasError = true;
 
       // Record error metrics
       const duration = (Date.now() - startTime) / 1000;

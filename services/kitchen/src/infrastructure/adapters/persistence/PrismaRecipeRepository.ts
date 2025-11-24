@@ -7,7 +7,6 @@
 import { PrismaClient as BasePrismaClient } from '../../../generated/prisma/client/client.js';
 import { Recipe } from '../../../domain/entities/Recipe.js';
 import { RecipeId } from '../../../domain/value-objects/RecipeId.js';
-import { Ingredients } from '../../../domain/value-objects/Ingredients.js';
 import { RecipeRepository } from '../../../domain/repositories/RecipeRepository.js';
 import { logger } from '../../logging/Logger.js';
 

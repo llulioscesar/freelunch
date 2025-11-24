@@ -48,7 +48,8 @@ export class DependencyContainer {
 
   private constructor() {
     // Initialize dependencies based on environment
-    const isTest = process.env.NODE_ENV === 'test';
+    // Reserved for future test-specific configuration
+    void (process.env.NODE_ENV === 'test');
 
     // Repositories
     const recipeRepository: RecipeRepository = new PrismaRecipeRepository(prismaClient);

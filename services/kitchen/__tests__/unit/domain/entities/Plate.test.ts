@@ -283,4 +283,99 @@ describe('Plate Entity', () => {
       expect(primitives.status).toBe(PlateStatusEnum.ASSIGNED);
     });
   });
+
+  describe('Business rules - Status checks', () => {
+    it('should check if plate is pending', () => {
+      const plate = new Plate(plateId, orderReference);
+      expect(plate.isPending()).toBe(true);
+    });
+
+    it('should check if plate is assigned', () => {
+      const plate = new Plate(plateId, orderReference);
+      const recipeId = new RecipeId();
+      const ingredients = new Ingredients({ tomato: 2 });
+      plate.assignRecipe(recipeId, 'Recipe', ingredients);
+      expect(plate.isAssigned()).toBe(true);
+    });
+
+    it('should check if plate is requesting ingredients', () => {
+      const plate = new Plate(plateId, orderReference);
+      const recipeId = new RecipeId();
+      const ingredients = new Ingredients({ tomato: 2 });
+      plate.assignRecipe(recipeId, 'Recipe', ingredients);
+      plate.requestIngredients();
+      expect(plate.isRequestingIngredients()).toBe(true);
+    });
+
+    it('should check if plate is cooking', () => {
+      const plate = new Plate(plateId, orderReference);
+      const recipeId = new RecipeId();
+      const ingredients = new Ingredients({ tomato: 2 });
+      plate.assignRecipe(recipeId, 'Recipe', ingredients);
+      plate.requestIngredients();
+      plate.startCooking();
+      expect(plate.isCooking()).toBe(true);
+    });
+
+    it('should check if plate is ready', () => {
+      const plate = new Plate(plateId, orderReference);
+      const recipeId = new RecipeId();
+      const ingredients = new Ingredients({ tomato: 2 });
+      plate.assignRecipe(recipeId, 'Recipe', ingredients);
+      plate.requestIngredients();
+      plate.startCooking();
+      plate.markAsReady();
+      expect(plate.isReady()).toBe(true);
+    });
+
+    it('should check if plate is failed', () => {
+      const plate = new Plate(plateId, orderReference);
+      plate.markAsFailed('Test');
+      expect(plate.isFailed()).toBe(true);
+    });
+
+    it('should check if plate is completed', () => {
+      const plate = new Plate(plateId, orderReference);
+      const recipeId = new RecipeId();
+      const ingredients = new Ingredients({ tomato: 2 });
+      plate.assignRecipe(recipeId, 'Recipe', ingredients);
+      plate.requestIngredients();
+      plate.startCooking();
+      plate.markAsReady();
+      expect(plate.isCompleted()).toBe(true);
+    });
+  });
+
+  describe('Business rules - Preparation time', () => {
+    it('should return null preparation time for unfinished plate', () => {
+      const plate = new Plate(plateId, orderReference);
+      expect(plate.getPreparationTime()).toBeNull();
+    });
+
+    it('should calculate preparation time for ready plate', () => {
+      const plate = new Plate(plateId, orderReference);
+      const recipeId = new RecipeId();
+      const ingredients = new Ingredients({ tomato: 2 });
+      plate.assignRecipe(recipeId, 'Recipe', ingredients);
+      plate.requestIngredients();
+      plate.startCooking();
+      plate.markAsReady();
+      const prepTime = plate.getPreparationTime();
+      expect(prepTime).not.toBeNull();
+      expect(typeof prepTime).toBe('number');
+    });
+  });
+
+  describe('Business rules - Retry capability', () => {
+    it('should allow retry for failed plate with retries remaining', () => {
+      const plate = new Plate(plateId, orderReference);
+      plate.markAsFailed('Test');
+      expect(plate.canRetry()).toBe(true);
+    });
+
+    it('should not allow retry for non-failed plate', () => {
+      const plate = new Plate(plateId, orderReference);
+      expect(plate.canRetry()).toBe(false);
+    });
+  });
 });
