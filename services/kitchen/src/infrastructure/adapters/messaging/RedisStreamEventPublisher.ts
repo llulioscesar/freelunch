@@ -142,7 +142,7 @@ export class RedisStreamEventPublisher implements EventPublisher {
   async getStreamInfo(streamName?: string): Promise<any> {
     try {
       const stream = streamName || this.streamName;
-      // @ts-ignore - call method exists at runtime but not in types
+      // @ts-expect-error - call method exists at runtime but not in types
       return await this.redis.call('XINFO', 'STREAM', stream);
     } catch (error: any) {
       logger.error(`Failed to get stream info`, error, { streamName });
