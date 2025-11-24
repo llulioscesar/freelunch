@@ -2,7 +2,7 @@
  * Prisma Client Configuration
  * Prisma ORM v7 with PostgreSQL Adapter
  */
-import { PrismaClient as BasePrismaClient } from '../../../generated/prisma/client/client';
+import { PrismaClient as BasePrismaClient } from '../../../generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
 import { logger } from '../../logging/Logger';
