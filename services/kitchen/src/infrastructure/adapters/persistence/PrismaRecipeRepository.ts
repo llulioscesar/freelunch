@@ -4,7 +4,7 @@
  *
  * Implements RecipeRepository interface using Prisma ORM
  */
-import { PrismaClient as BasePrismaClient } from '../../../generated/prisma/client/client.js';
+import { PrismaClient as BasePrismaClient } from '../../../generated/prisma/client/client';
 import { Recipe } from '../../../domain/entities/Recipe';
 import { RecipeId } from '../../../domain/value-objects/RecipeId';
 import { RecipeRepository } from '../../../domain/repositories/RecipeRepository';
