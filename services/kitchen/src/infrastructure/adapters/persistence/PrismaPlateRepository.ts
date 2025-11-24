@@ -4,7 +4,7 @@
  *
  * Implements PlateRepository interface using Prisma ORM
  */
-import { PrismaClient as BasePrismaClient } from '../../../generated/prisma/client';
+import { PrismaClient as BasePrismaClient } from '../../../generated/prisma/client/client.js';
 import { Plate } from '../../../domain/entities/Plate';
 import { PlateId } from '../../../domain/value-objects/PlateId';
 import { PlateStatusEnum } from '../../../domain/value-objects/PlateStatus';
@@ -118,7 +118,7 @@ export class PrismaPlateRepository implements PlateRepository {
       orderBy: { createdAt: 'asc' },
     });
 
-    return records.map((record) =>
+    return records.map((record: any) =>
       Plate.fromPrimitives({
         id: record.id,
         orderId: record.orderId,
@@ -143,7 +143,7 @@ export class PrismaPlateRepository implements PlateRepository {
       orderBy: { createdAt: 'asc' },
     });
 
-    return records.map((record) =>
+    return records.map((record: any) =>
       Plate.fromPrimitives({
         id: record.id,
         orderId: record.orderId,
@@ -167,7 +167,7 @@ export class PrismaPlateRepository implements PlateRepository {
       orderBy: { createdAt: 'desc' },
     });
 
-    return records.map((record) =>
+    return records.map((record: any) =>
       Plate.fromPrimitives({
         id: record.id,
         orderId: record.orderId,
@@ -200,7 +200,7 @@ export class PrismaPlateRepository implements PlateRepository {
       orderBy: { createdAt: 'asc' },
     });
 
-    return records.map((record) =>
+    return records.map((record: any) =>
       Plate.fromPrimitives({
         id: record.id,
         orderId: record.orderId,

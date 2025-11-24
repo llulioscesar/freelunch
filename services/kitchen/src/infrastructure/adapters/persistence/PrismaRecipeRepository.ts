@@ -4,7 +4,7 @@
  *
  * Implements RecipeRepository interface using Prisma ORM
  */
-import { PrismaClient as BasePrismaClient } from '../../../generated/prisma/client';
+import { PrismaClient as BasePrismaClient } from '../../../generated/prisma/client/client.js';
 import { Recipe } from '../../../domain/entities/Recipe';
 import { RecipeId } from '../../../domain/value-objects/RecipeId';
 import { RecipeRepository } from '../../../domain/repositories/RecipeRepository';
@@ -75,7 +75,7 @@ export class PrismaRecipeRepository implements RecipeRepository {
       orderBy: { name: 'asc' },
     });
 
-    return records.map((record) =>
+    return records.map((record: any) =>
       Recipe.fromPrimitives({
         id: record.id,
         name: record.name,
