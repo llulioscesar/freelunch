@@ -22,17 +22,10 @@ export class SystemHealthChecker implements HealthChecker {
     // PostgreSQL Pool for Prisma v7 adapter
     const poolConfig: pg.PoolConfig = {
       connectionString: process.env.DATABASE_URL,
+      ssl: {
+        rejectUnauthorized: false, // Aiven uses valid certs, no need for CA
+      },
     };
-
-    // SSL Configuration - if CA certificate is provided, use it
-    // Both preview and production databases require SSL with the same CA cert
-    if (process.env.DATABASE_CA_CERT) {
-      poolConfig.ssl = {
-        rejectUnauthorized: true,
-        // Replace literal \n with actual newlines if needed
-        ca: process.env.DATABASE_CA_CERT.replace(/\\n/g, '\n'),
-      };
-    }
 
     this.pool = new pg.Pool(poolConfig);
 
