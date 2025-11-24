@@ -2,10 +2,10 @@
  * Prisma Client Configuration
  * Prisma ORM v7 with PostgreSQL Adapter
  */
-import { PrismaClient as BasePrismaClient } from '../../../generated/prisma/client';
+import { PrismaClient as BasePrismaClient } from '../../../generated/prisma/client/index.js';
 import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
-import { logger } from '../../logging/Logger';
+import { logger } from '../../logging/Logger.js';
 
 // PostgreSQL Pool
 const pool = new pg.Pool({
