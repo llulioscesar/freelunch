@@ -35,9 +35,13 @@ describe('AssignRecipeUseCase', () => {
     } as jest.Mocked<PlateRepository>;
 
     mockRecipeRepository = {
+      save: jest.fn(),
       getRandomRecipe: jest.fn(),
       findById: jest.fn(),
+      findByName: jest.fn(),
       findAll: jest.fn(),
+      delete: jest.fn(),
+      count: jest.fn(),
     } as jest.Mocked<RecipeRepository>;
 
     mockEventPublisher = {
@@ -118,7 +122,7 @@ describe('AssignRecipeUseCase', () => {
 
       expect(mockEventPublisher.publish).toHaveBeenCalled();
       const firstCall = mockEventPublisher.publish.mock.calls[0][0];
-      expect(firstCall.eventName).toBe('PlateAssignedEvent');
+      expect(firstCall.eventName).toBe('kitchen.plate.assigned');
     });
 
     it('should request ingredients from warehouse', async () => {
@@ -159,7 +163,7 @@ describe('AssignRecipeUseCase', () => {
       const plate = new Plate(plateId, orderRef);
 
       mockPlateRepository.findById.mockResolvedValue(plate);
-      mockRecipeRepository.getRandomRecipe.mockResolvedValue(null);
+      mockRecipeRepository.getRandomRecipe.mockRejectedValue(new Error('No recipes available'));
 
       await expect(useCase.execute({ plateId: 'plate-123' }))
         .rejects.toThrow('No recipes available');

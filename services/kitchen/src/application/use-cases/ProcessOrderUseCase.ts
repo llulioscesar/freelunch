@@ -18,7 +18,10 @@ export class ProcessOrderUseCase {
   constructor(
     private readonly plateRepository: PlateRepository,
     private readonly eventPublisher: EventPublisher
-  ) {}
+  ) {
+    // EventPublisher reserved for future use
+    void this.eventPublisher;
+  }
 
   async execute(dto: ProcessOrderDTO): Promise<ProcessOrderResponseDTO> {
     const startTime = Date.now();

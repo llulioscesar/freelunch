@@ -62,14 +62,14 @@ describe('Recipe Entity', () => {
     });
   });
 
-  describe('requiresIngredient', () => {
+  describe('hasIngredient', () => {
     it('should return true for required ingredient', () => {
       const recipeId = new RecipeId();
       const ingredients = new Ingredients({ tomato: 2, onion: 1 });
       const recipe = new Recipe(recipeId, 'Recipe', ingredients);
 
-      expect(recipe.requiresIngredient('tomato')).toBe(true);
-      expect(recipe.requiresIngredient('onion')).toBe(true);
+      expect(recipe.hasIngredient('tomato')).toBe(true);
+      expect(recipe.hasIngredient('onion')).toBe(true);
     });
 
     it('should return false for non-required ingredient', () => {
@@ -77,7 +77,7 @@ describe('Recipe Entity', () => {
       const ingredients = new Ingredients({ tomato: 2 });
       const recipe = new Recipe(recipeId, 'Recipe', ingredients);
 
-      expect(recipe.requiresIngredient('cheese')).toBe(false);
+      expect(recipe.hasIngredient('cheese')).toBe(false);
     });
   });
 

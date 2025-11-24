@@ -8,7 +8,7 @@ export class PlateId {
   private readonly value: string;
 
   constructor(value?: string) {
-    if (value) {
+    if (value !== undefined) {
       this.validateFormat(value);
       this.value = value;
     } else {

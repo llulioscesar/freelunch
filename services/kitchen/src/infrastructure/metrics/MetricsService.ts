@@ -273,16 +273,16 @@ export class MetricsService {
   /**
    * Business Metrics - Ingredients
    */
-  recordIngredientsRequested(plateId: string, recipeId: string, ingredientCount: number): void {
+  recordIngredientsRequested(_plateId: string, _recipeId: string, ingredientCount: number): void {
     this.increment('ingredients_requests_total');
     this.increment('ingredients_requested_count', {}, ingredientCount);
   }
 
-  recordIngredientsAvailable(plateId: string, recipeId: string): void {
+  recordIngredientsAvailable(_plateId: string, _recipeId: string): void {
     this.increment('ingredients_available_total');
   }
 
-  recordIngredientsUnavailable(plateId: string, recipeId: string, reason: string): void {
+  recordIngredientsUnavailable(_plateId: string, _recipeId: string, reason: string): void {
     this.increment('ingredients_unavailable_total', { reason });
   }
 

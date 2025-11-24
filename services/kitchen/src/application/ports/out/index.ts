@@ -4,7 +4,6 @@
 export { EventPublisher } from './EventPublisher';
 export {
   WarehouseClient,
-  IngredientRequest,
-  IngredientResponse,
-  IngredientsRequestResult,
+  IngredientsRequestPayload,
+  IngredientsResponsePayload,
 } from './WarehouseClient';

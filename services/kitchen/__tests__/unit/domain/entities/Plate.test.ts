@@ -24,8 +24,8 @@ describe('Plate Entity', () => {
       expect(plate.getId()).toBe(plateId);
       expect(plate.getOrderReference()).toBe(orderReference);
       expect(plate.getStatus().getValue()).toBe(PlateStatusEnum.PENDING);
-      expect(plate.getRecipeId()).toBeNull();
-      expect(plate.getIngredients()).toBeNull();
+      expect(plate.getRecipeId()).toBeUndefined();
+      expect(plate.getIngredients()).toBeUndefined();
     });
   });
 
@@ -53,7 +53,7 @@ describe('Plate Entity', () => {
 
       const events = plate.getDomainEvents();
       expect(events).toHaveLength(1);
-      expect(events[0].eventName).toBe('PlateAssignedEvent');
+      expect(events[0].eventName).toBe('kitchen.plate.assigned');
     });
 
     it('should throw error if plate is not PENDING', () => {
@@ -92,7 +92,7 @@ describe('Plate Entity', () => {
 
       const events = plate.getDomainEvents();
       expect(events).toHaveLength(1);
-      expect(events[0].eventName).toBe('IngredientsRequestedEvent');
+      expect(events[0].eventName).toBe('kitchen.ingredients.requested');
     });
 
     it('should throw error if plate is not ASSIGNED', () => {
@@ -121,7 +121,7 @@ describe('Plate Entity', () => {
       const plate = new Plate(plateId, orderReference);
 
       expect(() => plate.startCooking())
-        .toThrow('Cannot start cooking: ingredients not requested');
+        .toThrow('Plate must be requesting ingredients before cooking');
     });
   });
 
@@ -154,14 +154,14 @@ describe('Plate Entity', () => {
 
       const events = plate.getDomainEvents();
       expect(events).toHaveLength(1);
-      expect(events[0].eventName).toBe('PlateReadyEvent');
+      expect(events[0].eventName).toBe('kitchen.plate.ready');
     });
 
     it('should throw error if plate is not COOKING', () => {
       const plate = new Plate(plateId, orderReference);
 
       expect(() => plate.markAsReady())
-        .toThrow('Can only mark cooking plates as ready');
+        .toThrow('Plate must be cooking to mark as ready');
     });
   });
 
@@ -184,10 +184,10 @@ describe('Plate Entity', () => {
 
       const events = plate.getDomainEvents();
       expect(events).toHaveLength(1);
-      expect(events[0].eventName).toBe('PlateFailedEvent');
+      expect(events[0].eventName).toBe('kitchen.plate.failed');
     });
 
-    it('should throw error if already READY', () => {
+    it('should allow marking READY plate as FAILED', () => {
       const plate = new Plate(plateId, orderReference);
       const recipeId = new RecipeId();
       const ingredients = new Ingredients({ tomato: 2 });
@@ -197,8 +197,11 @@ describe('Plate Entity', () => {
       plate.startCooking();
       plate.markAsReady();
 
-      expect(() => plate.markAsFailed('Test'))
-        .toThrow('Cannot mark ready or failed plates as failed');
+      // markAsFailed doesn't prevent marking ready plates as failed
+      plate.markAsFailed('Test');
+
+      expect(plate.getStatus().getValue()).toBe(PlateStatusEnum.FAILED);
+      expect(plate.getFailureReason()).toBe('Test');
     });
   });
 

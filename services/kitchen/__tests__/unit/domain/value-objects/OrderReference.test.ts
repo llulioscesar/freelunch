@@ -14,22 +14,22 @@ describe('OrderReference Value Object', () => {
 
     it('should throw error for empty orderId', () => {
       expect(() => new OrderReference('', 'item-456'))
-        .toThrow('OrderId cannot be empty');
+        .toThrow('orderId cannot be empty');
     });
 
     it('should throw error for whitespace-only orderId', () => {
       expect(() => new OrderReference('   ', 'item-456'))
-        .toThrow('OrderId cannot be empty');
+        .toThrow('orderId cannot be empty');
     });
 
     it('should throw error for empty orderItemId', () => {
       expect(() => new OrderReference('order-123', ''))
-        .toThrow('OrderItemId cannot be empty');
+        .toThrow('orderItemId cannot be empty');
     });
 
     it('should throw error for whitespace-only orderItemId', () => {
       expect(() => new OrderReference('order-123', '   '))
-        .toThrow('OrderItemId cannot be empty');
+        .toThrow('orderItemId cannot be empty');
     });
   });
 

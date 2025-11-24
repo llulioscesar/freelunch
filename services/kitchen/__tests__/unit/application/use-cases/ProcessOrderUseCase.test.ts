@@ -108,7 +108,7 @@ describe('ProcessOrderUseCase', () => {
     it('should throw error if orderId is missing', async () => {
       const input = {
         orderId: '',
-        items: [{ itemId: 'item-1', dishName: 'Dish A' }],
+        items: [{ itemId: 'item-1', orderId: '' }],
         quantity: 1,
       };
 
