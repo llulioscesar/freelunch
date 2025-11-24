@@ -1,25 +1,4 @@
 {
-  "version": 2,
-  "name": "freelunch-kitchen",
-  "builds": [
-    {
-      "src": "api/**/*.ts",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
-    },
-    {
-      "src": "/",
-      "dest": "/api/index"
-    }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  },
   "installCommand": "npm ci",
   "buildCommand": "npm run vercel-build",
   "outputDirectory": "."
