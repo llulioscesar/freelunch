@@ -6,8 +6,8 @@
  * Processes OrderCreated events from stream:orders:events
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { dependencies } from '../../src/infrastructure/config/dependencies';
-import { logger } from '../../src/infrastructure/logging/Logger';
+import { dependencies } from '../../src/infrastructure/config/dependencies.js';
+import { logger } from '../../src/infrastructure/logging/Logger.js';
 
 export default async function handler(
   req: VercelRequest,
