@@ -1,0 +1,287 @@
+/**
+ * Order Events Consumer
+ * Kitchen Service
+ *
+ * Listens to events from Orders Service and processes them.
+ *
+ * Events consumed:
+ * - OrderCreated: Create plates for each order item and assign recipes
+ *
+ * Uses Redis Streams consumer groups for:
+ * - Guaranteed delivery (events persist until ACK)
+ * - Load balancing (multiple consumers can process in parallel)
+ * - Fault tolerance (failed messages stay in pending list)
+ */
+import { Redis } from '@upstash/redis';
+import { RedisClient } from '../adapters/cache/RedisClient.js';
+import { ProcessOrderUseCase } from '../../application/use-cases/ProcessOrderUseCase.js';
+import { AssignRecipeUseCase } from '../../application/use-cases/AssignRecipeUseCase.js';
+import { logger } from '../logging/Logger.js';
+
+export interface OrderCreatedEventPayload {
+  eventType: string;
+  orderId: string;
+  quantity: number;
+  customerName: string;
+  items: Array<{
+    itemId: string;
+    orderId: string;
+  }>;
+}
+
+export class OrderEventsConsumer {
+  private redis: Redis;
+  private streamName: string;
+  private consumerGroup: string;
+  private consumerId: string;
+  private isRunning = false;
+  private pollInterval = 1000; // 1 second
+
+  constructor(
+    private readonly processOrderUseCase: ProcessOrderUseCase,
+    private readonly assignRecipeUseCase: AssignRecipeUseCase,
+    consumerId?: string
+  ) {
+    this.redis = RedisClient.getInstance();
+    this.streamName = process.env.ORDERS_EVENTS_STREAM || 'stream:orders:events';
+    this.consumerGroup =
+      process.env.KITCHEN_CONSUMER_GROUP || 'kitchen-service';
+    this.consumerId =
+      consumerId || `kitchen-consumer-${Date.now()}-${process.pid}`;
+  }
+
+  /**
+   * Initialize consumer group (idempotent)
+   */
+  async initialize(): Promise<void> {
+    try {
+      // Create consumer group with Upstash syntax
+      await this.redis.xgroup(this.streamName, {
+        type: 'CREATE',
+        group: this.consumerGroup,
+        id: '$', // Start from new messages
+        options: { MKSTREAM: true },
+      });
+
+      logger.info('Consumer group created', {
+        streamName: this.streamName,
+        consumerGroup: this.consumerGroup,
+      });
+    } catch (error: any) {
+      if (error.message?.includes('BUSYGROUP')) {
+        logger.info('Consumer group already exists', {
+          consumerGroup: this.consumerGroup,
+        });
+      } else {
+        logger.error('Failed to create consumer group', error, {
+          streamName: this.streamName,
+        });
+        throw error;
+      }
+    }
+  }
+
+  /**
+   * Start consuming events (long-running process)
+   */
+  async start(): Promise<void> {
+    if (this.isRunning) {
+      logger.warn('Consumer is already running');
+      return;
+    }
+
+    this.isRunning = true;
+    logger.info('Order events consumer started', {
+      consumerId: this.consumerId,
+      streamName: this.streamName,
+    });
+
+    await this.consumeLoop();
+  }
+
+  /**
+   * Stop consuming
+   */
+  async stop(): Promise<void> {
+    this.isRunning = false;
+    logger.info('Order events consumer stopped', {
+      consumerId: this.consumerId,
+    });
+  }
+
+  /**
+   * Main consumption loop
+   */
+  private async consumeLoop(): Promise<void> {
+    while (this.isRunning) {
+      try {
+        // Read new messages using Upstash XREADGROUP syntax
+        const messages = await this.redis.xreadgroup(
+          this.consumerGroup,
+          this.consumerId,
+          this.streamName,
+          '>', // Read only new messages
+          { count: 10 }
+        );
+
+        if (!messages || messages.length === 0) {
+          await this.sleep(this.pollInterval);
+          continue;
+        }
+
+        // Process messages
+        for (const [_streamName, streamMessages] of messages as any) {
+          for (const [messageId, fields] of streamMessages) {
+            await this.processMessage(messageId, fields);
+          }
+        }
+      } catch (error) {
+        logger.error('Error in consume loop', error as Error, {
+          consumerId: this.consumerId,
+        });
+        await this.sleep(this.pollInterval);
+      }
+    }
+  }
+
+  /**
+   * Process a single message
+   */
+  private async processMessage(
+    messageId: string,
+    fields: Record<string, string>
+  ): Promise<void> {
+    try {
+      const eventType = fields.eventType;
+      const payload = JSON.parse(fields.payload || '{}');
+
+      logger.info(`Processing event from Orders`, {
+        messageId,
+        eventType,
+        orderId: payload.data?.orderId,
+      });
+
+      // Route to appropriate handler
+      switch (eventType) {
+        case 'order.created':
+          await this.handleOrderCreated(payload.data);
+          break;
+        default:
+          logger.warn(`Unknown event type: ${eventType}`, { messageId });
+      }
+
+      // Acknowledge message (remove from pending list)
+      await this.redis.xack(this.streamName, this.consumerGroup, messageId);
+
+      logger.debug(`Message acknowledged`, { messageId });
+    } catch (error) {
+      logger.error('Failed to process message', error as Error, {
+        messageId,
+        fields,
+      });
+      // Message stays in pending list for retry
+    }
+  }
+
+  /**
+   * Handle OrderCreated event
+   */
+  private async handleOrderCreated(data: OrderCreatedEventPayload): Promise<void> {
+    try {
+      logger.info(`Handling OrderCreated event`, {
+        orderId: data.orderId,
+        itemsCount: data.items.length,
+      });
+
+      // Step 1: Create plates for each order item
+      const result = await this.processOrderUseCase.execute({
+        orderId: data.orderId,
+        items: data.items,
+        quantity: data.quantity,
+        customerName: data.customerName,
+      });
+
+      logger.info(`Plates created for order`, {
+        orderId: data.orderId,
+        platesCreated: result.platesCreated,
+      });
+
+      // Step 2: Assign recipe to each plate
+      for (const plate of result.plates) {
+        await this.assignRecipeUseCase.execute({
+          plateId: plate.plateId,
+        });
+
+        logger.info(`Recipe assigned to plate`, {
+          plateId: plate.plateId,
+          orderItemId: plate.orderItemId,
+        });
+      }
+
+      logger.info(`Order processing completed`, {
+        orderId: data.orderId,
+        platesCreated: result.platesCreated,
+      });
+    } catch (error) {
+      logger.error('Failed to handle OrderCreated event', error as Error, {
+        orderId: data.orderId,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Process a batch of messages (for serverless cron)
+   */
+  async processBatch(maxMessages: number = 10): Promise<number> {
+    try {
+      // Read messages using Upstash XREADGROUP syntax
+      const messages = await this.redis.xreadgroup(
+        this.consumerGroup,
+        this.consumerId,
+        this.streamName,
+        '>', // Only new messages
+        { count: maxMessages }
+      );
+
+      if (!messages || messages.length === 0) {
+        logger.debug('No messages to process');
+        return 0;
+      }
+
+      let processedCount = 0;
+
+      // Process each message
+      for (const [streamName, streamMessages] of messages) {
+        for (const [messageId, fields] of streamMessages) {
+          try {
+            await this.processMessage(messageId as string, fields);
+            processedCount++;
+          } catch (error) {
+            logger.error('Failed to process message in batch', error as Error, {
+              messageId,
+              streamName,
+            });
+          }
+        }
+      }
+
+      logger.info('Batch processing completed', {
+        processedCount,
+        consumerId: this.consumerId,
+      });
+
+      return processedCount;
+    } catch (error) {
+      logger.error('Batch processing failed', error as Error);
+      return 0;
+    }
+  }
+
+  /**
+   * Utility: Sleep for specified milliseconds
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+}
