@@ -13,7 +13,7 @@
  * - Custom scraper: Poll this endpoint every 30-60 seconds
  */
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { metricsService } from '../src/infrastructure/metrics/MetricsService.js';
+import { metricsService } from '../src/infrastructure/metrics/MetricsService';
 
 export default async function handler(
   req: VercelRequest,

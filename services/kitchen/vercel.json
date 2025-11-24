@@ -21,6 +21,6 @@
     "NODE_ENV": "production"
   },
   "installCommand": "npm ci",
-  "buildCommand": "npm run build && npx prisma generate && npx prisma db push --skip-generate --accept-data-loss",
+  "buildCommand": "npm run vercel-build",
   "outputDirectory": "."
 }
