@@ -193,12 +193,24 @@ export class KitchenRequestsConsumer {
         }
       }
 
-      // Convert array format to Record format for use case
-      // Kitchen sends: [{ name: "tomato", quantity: 1 }, ...]
+      // Convert ingredients to Record format for use case
+      // Kitchen may send either:
+      // - Object format: { "tomato": 2, "onion": 1 }
+      // - Array format: [{ name: "tomato", quantity: 1 }, ...]
       // Use case expects: { "tomato": 1, ... }
-      const ingredientsRecord: Record<string, number> = {};
-      for (const item of ingredientsArray) {
-        ingredientsRecord[item.name] = item.quantity;
+      let ingredientsRecord: Record<string, number>;
+
+      if (Array.isArray(ingredientsArray)) {
+        // Array format - convert to Record
+        ingredientsRecord = {};
+        for (const item of ingredientsArray) {
+          ingredientsRecord[item.name] = item.quantity;
+        }
+      } else if (typeof ingredientsArray === 'object' && ingredientsArray !== null) {
+        // Already in object/Record format
+        ingredientsRecord = ingredientsArray as unknown as Record<string, number>;
+      } else {
+        throw new Error(`Invalid ingredients format: ${typeof ingredientsArray}`);
       }
 
       logger.info('Processing kitchen ingredient request', {
