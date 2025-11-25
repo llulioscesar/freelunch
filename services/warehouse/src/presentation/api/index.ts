@@ -48,8 +48,8 @@ export default async function handler(
       checks: healthResult.checks,
       endpoints: [
         'GET /api/inventory - Get current inventory',
+        'POST /api/inventory - Initialize inventory with default stock',
         'GET /api/purchases - Get purchase history',
-        'POST /api/initialize - Initialize inventory with default stock',
       ],
       layers: {
         domain: 'Ready',
