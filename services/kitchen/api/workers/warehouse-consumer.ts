@@ -6,8 +6,8 @@
  * Processes ingredient availability responses from stream:warehouse:responses
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { dependencies } from '../../src/infrastructure/config/dependencies.js';
-import { logger } from '../../src/infrastructure/logging/Logger.js';
+import { dependencies } from '../../dist/infrastructure/config/dependencies.js';
+import { logger } from '../../dist/infrastructure/logging/Logger.js';
 
 export default async function handler(
   req: VercelRequest,
