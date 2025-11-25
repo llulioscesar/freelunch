@@ -134,6 +134,31 @@ export class UpdateOrderItemStatusUseCase {
             recipeId: item.getRecipeId(),
             preparationTime: item.getPreparationTime(),
           });
+
+          // Auto-deliver: In donation event, dishes are delivered immediately when ready
+          item.markAsDelivered();
+          logger.info('Dish auto-delivered to customer', {
+            itemId: dto.itemId,
+            recipeId: item.getRecipeId(),
+          });
+
+          // Record the READY → DELIVERED transition in history
+          if (this.statusHistoryRepository) {
+            try {
+              await this.statusHistoryRepository.record({
+                orderItemId: dto.itemId,
+                fromStatus: OrderItemStatus.READY,
+                toStatus: OrderItemStatus.DELIVERED,
+                recipeId: item.getRecipeId(),
+                recipeName: item.getRecipeName(),
+              });
+            } catch (historyError) {
+              logger.warn('Failed to record auto-delivery history', {
+                itemId: dto.itemId,
+                error: (historyError as Error).message,
+              });
+            }
+          }
           break;
 
         case OrderItemStatus.DELIVERED:
