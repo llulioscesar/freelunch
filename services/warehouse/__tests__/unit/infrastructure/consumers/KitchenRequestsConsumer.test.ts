@@ -188,6 +188,56 @@ describe('KitchenRequestsConsumer', () => {
       );
     });
 
+    it('should process messages when ingredients is object format (not array)', async () => {
+      // Kitchen sends ingredients as { tomato: 2, onion: 1 } not [{ name, quantity }]
+      const payload = {
+        data: {
+          plateId: 'plate-123',
+          orderItemId: 'item-456',
+          recipeId: 'recipe-789',
+          recipeName: 'Test Recipe',
+          ingredients: { tomato: 2, lettuce: 1 }, // Object format, not array!
+          requestedAt: new Date().toISOString(),
+        },
+      };
+
+      mockRedis.xreadgroup.mockResolvedValue([
+        [
+          'stream:warehouse:requests',
+          [
+            [
+              'message-id-1',
+              {
+                eventType: 'IngredientsRequested',
+                payload: JSON.stringify(payload),
+              },
+            ],
+          ],
+        ],
+      ]);
+
+      mockUseCase.execute.mockResolvedValue({
+        success: true,
+        plateId: 'plate-123',
+        orderItemId: 'item-456',
+        processedIngredients: { tomato: 2, lettuce: 1 },
+        unavailableIngredients: [],
+        message: 'Success',
+      });
+
+      mockRedis.xack.mockResolvedValue(1);
+
+      const result = await consumer.processBatch(10);
+
+      expect(result).toBe(1);
+      expect(mockUseCase.execute).toHaveBeenCalledWith(
+        expect.objectContaining({
+          plateId: 'plate-123',
+          ingredients: { tomato: 2, lettuce: 1 },
+        })
+      );
+    });
+
     it('should process messages with legacy flat format', async () => {
       mockRedis.xreadgroup.mockResolvedValue([
         [
