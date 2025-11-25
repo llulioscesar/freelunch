@@ -59,7 +59,7 @@ describe('RedisClient', () => {
     });
 
     it('should throw error when UPSTASH_REDIS_REST_URL is missing', () => {
-      delete process.env.UPSTASH_REDIS_REST_URL;
+      process.env.UPSTASH_REDIS_REST_URL = '';
       process.env.UPSTASH_REDIS_REST_TOKEN = 'test-token';
 
       expect(() => RedisClient.getInstance()).toThrow(
@@ -69,7 +69,7 @@ describe('RedisClient', () => {
 
     it('should throw error when UPSTASH_REDIS_REST_TOKEN is missing', () => {
       process.env.UPSTASH_REDIS_REST_URL = 'https://test-redis.upstash.io';
-      delete process.env.UPSTASH_REDIS_REST_TOKEN;
+      process.env.UPSTASH_REDIS_REST_TOKEN = '';
 
       expect(() => RedisClient.getInstance()).toThrow(
         'Redis configuration missing'
@@ -77,8 +77,8 @@ describe('RedisClient', () => {
     });
 
     it('should throw error when both environment variables are missing', () => {
-      delete process.env.UPSTASH_REDIS_REST_URL;
-      delete process.env.UPSTASH_REDIS_REST_TOKEN;
+      process.env.UPSTASH_REDIS_REST_URL = '';
+      process.env.UPSTASH_REDIS_REST_TOKEN = '';
 
       expect(() => RedisClient.getInstance()).toThrow(
         'Redis configuration missing'
@@ -109,7 +109,7 @@ describe('RedisClient', () => {
     });
 
     it('should return false when URL is missing', () => {
-      delete process.env.UPSTASH_REDIS_REST_URL;
+      process.env.UPSTASH_REDIS_REST_URL = '';
       process.env.UPSTASH_REDIS_REST_TOKEN = 'test-token';
 
       expect(RedisClient.isConfigured()).toBe(false);
@@ -117,14 +117,14 @@ describe('RedisClient', () => {
 
     it('should return false when token is missing', () => {
       process.env.UPSTASH_REDIS_REST_URL = 'https://test-redis.upstash.io';
-      delete process.env.UPSTASH_REDIS_REST_TOKEN;
+      process.env.UPSTASH_REDIS_REST_TOKEN = '';
 
       expect(RedisClient.isConfigured()).toBe(false);
     });
 
     it('should return false when both are missing', () => {
-      delete process.env.UPSTASH_REDIS_REST_URL;
-      delete process.env.UPSTASH_REDIS_REST_TOKEN;
+      process.env.UPSTASH_REDIS_REST_URL = '';
+      process.env.UPSTASH_REDIS_REST_TOKEN = '';
 
       expect(RedisClient.isConfigured()).toBe(false);
     });
