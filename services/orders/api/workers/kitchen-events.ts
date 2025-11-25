@@ -44,8 +44,9 @@ export default async function handler(
     await consumer.claimStaleMessages();
 
     // Process pending messages (batch)
-    // Note: Vercel has 10s timeout, so we process in batches
-    const processed = await consumer.processBatch(10); // Process up to 10 messages
+    // Note: Vercel has 300s timeout, so we process in batches
+    const batchSize = parseInt(process.env.KITCHEN_CONSUMER_BATCH_SIZE || '50', 10);
+    const processed = await consumer.processBatch(batchSize);
 
     const duration = Date.now() - startTime;
 
