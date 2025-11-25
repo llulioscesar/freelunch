@@ -145,15 +145,35 @@ export class OrderEventsConsumer {
   }
 
   /**
+   * Parse Redis Stream fields (can be array or object)
+   */
+  private parseFields(fields: any): Record<string, string> {
+    const parsed: Record<string, string> = {};
+
+    // Redis Streams can return fields as [key1, value1, key2, value2]
+    if (Array.isArray(fields)) {
+      for (let i = 0; i < fields.length; i += 2) {
+        parsed[fields[i]] = fields[i + 1];
+      }
+    } else {
+      Object.assign(parsed, fields);
+    }
+
+    return parsed;
+  }
+
+  /**
    * Process a single message
    */
   private async processMessage(
     messageId: string,
-    fields: Record<string, string>
+    fields: any
   ): Promise<void> {
     try {
-      const eventType = fields.eventType;
-      const payload = JSON.parse(fields.payload || '{}');
+      // Parse fields from Redis format
+      const parsedFields = this.parseFields(fields);
+      const eventType = parsedFields.eventType;
+      const payload = JSON.parse(parsedFields.payload || '{}');
 
       logger.info(`Processing event from Orders`, {
         messageId,
