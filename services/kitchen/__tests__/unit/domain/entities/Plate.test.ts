@@ -117,6 +117,21 @@ describe('Plate Entity', () => {
       expect(plate.getCookingAt()).toBeInstanceOf(Date);
     });
 
+    it('should emit PlateCookingStartedEvent', () => {
+      const plate = new Plate(plateId, orderReference);
+      const recipeId = new RecipeId();
+      const ingredients = new Ingredients({ tomato: 2 });
+
+      plate.assignRecipe(recipeId, 'Recipe', ingredients);
+      plate.requestIngredients();
+      plate.clearDomainEvents(); // Clear previous events
+      plate.startCooking();
+
+      const events = plate.getDomainEvents();
+      expect(events).toHaveLength(1);
+      expect(events[0].eventName).toBe('kitchen.plate.cooking');
+    });
+
     it('should throw error if ingredients not requested', () => {
       const plate = new Plate(plateId, orderReference);
 
