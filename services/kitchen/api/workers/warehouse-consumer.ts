@@ -32,6 +32,9 @@ export default async function handler(
     // Initialize consumer group (idempotent)
     await warehouseResponsesConsumer.initialize();
 
+    // Claim stale messages first (fault tolerance)
+    await warehouseResponsesConsumer.claimStaleMessages();
+
     // Process batch of messages (serverless-friendly)
     const batchSize = parseInt(process.env.WAREHOUSE_CONSUMER_BATCH_SIZE || '50', 10);
     const processedCount = await warehouseResponsesConsumer.processBatch(batchSize);

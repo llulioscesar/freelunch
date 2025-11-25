@@ -32,6 +32,9 @@ export default async function handler(
     // Initialize consumer group (idempotent)
     await orderEventsConsumer.initialize();
 
+    // Claim stale messages first (fault tolerance)
+    await orderEventsConsumer.claimStaleMessages();
+
     // Process batch of messages (serverless-friendly)
     const batchSize = parseInt(process.env.ORDER_CONSUMER_BATCH_SIZE || '50', 10);
     const processedCount = await orderEventsConsumer.processBatch(batchSize);
