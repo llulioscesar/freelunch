@@ -56,15 +56,15 @@ export default async function handler(
     const kitchenConsumer = await getConsumer();
 
     // Process batch of messages
-    const maxMessages = req.body?.maxMessages || 10;
-    const processedCount = await kitchenConsumer.processBatch(maxMessages);
+    const batchSize = parseInt(process.env.KITCHEN_REQUESTS_BATCH_SIZE || '50', 10);
+    const processedCount = await kitchenConsumer.processBatch(batchSize);
 
     const duration = Date.now() - startTime;
 
     logger.info('Process requests completed', {
       processedCount,
       duration,
-      maxMessages,
+      batchSize,
     });
 
     return res.status(200).json({
