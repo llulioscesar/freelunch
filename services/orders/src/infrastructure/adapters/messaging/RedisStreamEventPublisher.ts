@@ -19,7 +19,7 @@ import { metricsService } from '../../metrics/MetricsService';
 
 export class RedisStreamEventPublisher implements EventPublisher {
   private redis;
-  private streamName = 'orders:events';
+  private streamName = 'stream:orders:events';
 
   constructor() {
     this.redis = RedisClient.getInstance();

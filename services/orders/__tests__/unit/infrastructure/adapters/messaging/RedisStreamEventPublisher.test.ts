@@ -53,7 +53,7 @@ describe('RedisStreamEventPublisher (Unit with Mocks)', () => {
       await publisher.publish(event);
 
       expect(mockRedis.xadd).toHaveBeenCalledWith(
-        'orders:events',
+        'stream:orders:events',
         '*',
         expect.objectContaining({
           eventType: 'order.created',
@@ -67,7 +67,7 @@ describe('RedisStreamEventPublisher (Unit with Mocks)', () => {
 
       await publisher.publish(event);
 
-      // Should be called twice: once for main stream, once for orders:events stream
+      // Should be called twice: once for main stream, once for specialized stream
       expect(mockRedis.xadd).toHaveBeenCalledWith(
         'stream:orders:events',
         '*',
@@ -81,7 +81,7 @@ describe('RedisStreamEventPublisher (Unit with Mocks)', () => {
       await publisher.publish(event);
 
       expect(mockRedis.xadd).toHaveBeenCalledWith(
-        'orders:events',
+        'stream:orders:events',
         '*',
         expect.objectContaining({
           eventType: 'order.completed',
@@ -107,7 +107,7 @@ describe('RedisStreamEventPublisher (Unit with Mocks)', () => {
       await publisher.publish(event);
 
       expect(mockRedis.xadd).toHaveBeenCalledWith(
-        'orders:events',
+        'stream:orders:events',
         '*',
         expect.objectContaining({
           eventType: 'order.failed',
@@ -156,7 +156,7 @@ describe('RedisStreamEventPublisher (Unit with Mocks)', () => {
       await publisher.publish(mockEvent as any);
 
       expect(mockRedis.xadd).toHaveBeenCalledWith(
-        'orders:events',
+        'stream:orders:events',
         '*',
         expect.objectContaining({
           eventType: 'test.event',
@@ -204,11 +204,11 @@ describe('RedisStreamEventPublisher (Unit with Mocks)', () => {
     it('should create consumer group successfully', async () => {
       mockRedis.xgroup.mockResolvedValue('OK');
 
-      await publisher.ensureConsumerGroup('orders:events', 'orders-consumer-group');
+      await publisher.ensureConsumerGroup('stream:orders:events', 'orders-consumer-group');
 
       expect(mockRedis.xgroup).toHaveBeenCalledWith(
         'CREATE',
-        'orders:events',
+        'stream:orders:events',
         'orders-consumer-group',
         '$',
         'MKSTREAM'
@@ -219,7 +219,7 @@ describe('RedisStreamEventPublisher (Unit with Mocks)', () => {
       const busyError = new Error('BUSYGROUP Consumer Group name already exists');
       mockRedis.xgroup.mockRejectedValue(busyError);
 
-      await publisher.ensureConsumerGroup('orders:events', 'existing-group');
+      await publisher.ensureConsumerGroup('stream:orders:events', 'existing-group');
 
       expect(mockRedis.xgroup).toHaveBeenCalled();
     });
@@ -229,7 +229,7 @@ describe('RedisStreamEventPublisher (Unit with Mocks)', () => {
       mockRedis.xgroup.mockRejectedValue(error);
 
       await expect(
-        publisher.ensureConsumerGroup('orders:events', 'test-group')
+        publisher.ensureConsumerGroup('stream:orders:events', 'test-group')
       ).rejects.toThrow('Connection error');
     });
   });
@@ -239,16 +239,16 @@ describe('RedisStreamEventPublisher (Unit with Mocks)', () => {
       const mockInfo = { length: 100, lastGeneratedId: '1234-0' };
       mockRedis.xinfo.mockResolvedValue(mockInfo);
 
-      const result = await publisher.getStreamInfo('orders:events');
+      const result = await publisher.getStreamInfo('stream:orders:events');
 
       expect(result).toEqual(mockInfo);
-      expect(mockRedis.xinfo).toHaveBeenCalledWith('STREAM', 'orders:events');
+      expect(mockRedis.xinfo).toHaveBeenCalledWith('STREAM', 'stream:orders:events');
     });
 
     it('should return null on error', async () => {
       mockRedis.xinfo.mockRejectedValue(new Error('Stream error'));
 
-      const result = await publisher.getStreamInfo('orders:events');
+      const result = await publisher.getStreamInfo('stream:orders:events');
 
       expect(result).toBeNull();
     });
@@ -259,7 +259,7 @@ describe('RedisStreamEventPublisher (Unit with Mocks)', () => {
 
       await publisher.getStreamInfo();
 
-      expect(mockRedis.xinfo).toHaveBeenCalledWith('STREAM', 'orders:events');
+      expect(mockRedis.xinfo).toHaveBeenCalledWith('STREAM', 'stream:orders:events');
     });
   });
 });
