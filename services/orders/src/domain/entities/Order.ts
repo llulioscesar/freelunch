@@ -241,7 +241,10 @@ export class Order {
   }
 
   getCompletedItems(): number {
-    return this.items.filter(item => item.isCompleted()).length;
+    // Items are considered "completed" for progress when they're READY, DELIVERED, or FAILED
+    return this.items.filter(item =>
+      item.isReady() || item.isDelivered() || item.isFailed()
+    ).length;
   }
 
   getPendingItems(): number {
