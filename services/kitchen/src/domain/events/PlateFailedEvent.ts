@@ -24,19 +24,14 @@ export class PlateFailedEvent extends DomainEvent {
 
   toPrimitives(): any {
     return {
-      eventId: this.eventId,
-      eventName: this.eventName,
-      occurredOn: this.occurredOn.toISOString(),
-      data: {
-        plateId: this.plateId,
-        orderId: this.orderId,
-        orderItemId: this.orderItemId,
-        recipeId: this.recipeId,
-        recipeName: this.recipeName,
-        reason: this.reason,
-        failedAt: this.failedAt.toISOString(),
-        retryCount: this.retryCount,
-      },
+      plateId: this.plateId,
+      orderId: this.orderId,
+      orderItemId: this.orderItemId,
+      recipeId: this.recipeId,
+      recipeName: this.recipeName,
+      reason: this.reason,
+      failedAt: this.failedAt.toISOString(),
+      retryCount: this.retryCount,
     };
   }
 }

@@ -23,18 +23,13 @@ export class PlateReadyEvent extends DomainEvent {
 
   toPrimitives(): any {
     return {
-      eventId: this.eventId,
-      eventName: this.eventName,
-      occurredOn: this.occurredOn.toISOString(),
-      data: {
-        plateId: this.plateId,
-        orderId: this.orderId,
-        orderItemId: this.orderItemId,
-        recipeId: this.recipeId,
-        recipeName: this.recipeName,
-        readyAt: this.readyAt.toISOString(),
-        preparationTimeSeconds: this.preparationTimeSeconds,
-      },
+      plateId: this.plateId,
+      orderId: this.orderId,
+      orderItemId: this.orderItemId,
+      recipeId: this.recipeId,
+      recipeName: this.recipeName,
+      readyAt: this.readyAt.toISOString(),
+      preparationTimeSeconds: this.preparationTimeSeconds,
     };
   }
 }
