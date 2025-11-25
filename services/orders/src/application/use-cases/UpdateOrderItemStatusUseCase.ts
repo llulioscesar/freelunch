@@ -259,26 +259,57 @@ export class UpdateOrderItemStatusUseCase {
   }
 
   /**
-   * Auto-complete order when all items are ready or failed
+   * Auto-update order status based on item states
+   *
+   * Order status progression:
+   * - PENDING → PREPARING: When any item starts (assigned/cooking)
+   * - PREPARING → READY: When all items are ready
+   * - READY → DELIVERED: When all items are delivered
+   * - Any → FAILED: When items fail
    */
   private checkAndCompleteOrder(order: any): void {
-    if (order.isFullyCompleted() && !order.isCompleted()) {
-      if (order.hasFailedItems()) {
-        // Some items failed - mark order as failed
-        order.markAsFailed('Some dishes failed to prepare');
-        logger.info('Order marked as failed (some items failed)', {
-          orderId: order.getId().getValue(),
-          failedItems: order.getFailedItems(),
-          totalItems: order.getTotalItems(),
-        });
-      } else {
-        // All items delivered - mark order as completed
-        order.markAsDelivered();
-        logger.info('Order auto-completed (all items ready)', {
-          orderId: order.getId().getValue(),
-          totalItems: order.getTotalItems(),
-        });
-      }
+    const currentStatus = order.getStatus().getValue();
+
+    // Check for failures first
+    if (order.hasFailedItems() && !order.isCompleted()) {
+      order.markAsFailed('Some dishes failed to prepare');
+      logger.info('Order marked as failed (some items failed)', {
+        orderId: order.getId().getValue(),
+        failedItems: order.getFailedItems(),
+        totalItems: order.getTotalItems(),
+      });
+      return;
+    }
+
+    // All items delivered → Order DELIVERED
+    if (order.areAllItemsDelivered() && currentStatus !== 'DELIVERED') {
+      order.markAsDelivered();
+      logger.info('Order marked as delivered (all items delivered)', {
+        orderId: order.getId().getValue(),
+        totalItems: order.getTotalItems(),
+      });
+      return;
+    }
+
+    // All items ready → Order READY
+    if (order.areAllItemsReady() && currentStatus !== 'READY' && currentStatus !== 'DELIVERED') {
+      order.markAsReady();
+      logger.info('Order marked as ready (all items ready)', {
+        orderId: order.getId().getValue(),
+        totalItems: order.getTotalItems(),
+        readyItems: order.getReadyItems(),
+      });
+      return;
+    }
+
+    // Any item in progress → Order PREPARING
+    if (order.hasAnyItemInProgress() && currentStatus === 'PENDING') {
+      order.markAsPreparing();
+      logger.info('Order marked as preparing (items in progress)', {
+        orderId: order.getId().getValue(),
+        pendingItems: order.getPendingItems(),
+        totalItems: order.getTotalItems(),
+      });
     }
   }
 }
