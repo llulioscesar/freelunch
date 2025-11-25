@@ -266,7 +266,18 @@ export class KitchenEventsConsumer {
         parsed = payload.payload;
       }
       // Standard format: { data: { ... } }
-      Object.assign(payload, parsed.data || parsed);
+      const eventData = parsed.data || parsed;
+
+      // Map Kitchen event format to expected format
+      return {
+        event: payload.eventType || eventData.eventName || payload.event,
+        orderId: eventData.orderId,
+        itemId: eventData.orderItemId, // Kitchen uses orderItemId
+        recipeId: eventData.recipeId,
+        recipeName: eventData.recipeName,
+        reason: eventData.reason,
+        timestamp: payload.occurredOn || eventData.occurredOn || new Date().toISOString(),
+      } as KitchenEventPayload;
     }
 
     return payload as KitchenEventPayload;
@@ -277,13 +288,21 @@ export class KitchenEventsConsumer {
    */
   private mapEventToStatus(eventName: string): OrderItemStatus | null {
     const mapping: Record<string, OrderItemStatus> = {
+      // Current Kitchen event names (kitchen.*)
+      'kitchen.plate.assigned': OrderItemStatus.ASSIGNED,
+      'kitchen.ingredients.requested': OrderItemStatus.INGREDIENTS_REQUESTED,
+      'kitchen.plate.cooking': OrderItemStatus.COOKING,
+      'kitchen.plate.ready': OrderItemStatus.READY,
+      'kitchen.plate.failed': OrderItemStatus.FAILED,
+
+      // Legacy event names (for backward compatibility)
       RECIPE_ASSIGNED: OrderItemStatus.ASSIGNED,
-      RECIPE_SELECTED: OrderItemStatus.ASSIGNED, // Alias
+      RECIPE_SELECTED: OrderItemStatus.ASSIGNED,
       DISH_PREPARING: OrderItemStatus.PREPARING,
       INGREDIENTS_REQUESTED: OrderItemStatus.INGREDIENTS_REQUESTED,
       COOKING: OrderItemStatus.COOKING,
       DISH_PREPARED: OrderItemStatus.READY,
-      DISH_READY: OrderItemStatus.READY, // Alias
+      DISH_READY: OrderItemStatus.READY,
       DISH_FAILED: OrderItemStatus.FAILED,
     };
 

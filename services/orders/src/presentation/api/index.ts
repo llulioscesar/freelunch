@@ -49,7 +49,7 @@ export default async function handler(
       endpoints: [
         'POST /api/create - Create new order',
         'GET /api/list - List all orders',
-        'GET /api/status?id={orderId} - Get order status',
+        'GET /api/status?id={orderId} - Get order detail with items',
         'PATCH /api/status?id={orderId} - Update order status',
       ],
       layers: {

@@ -17,6 +17,22 @@ export interface OrderStatusResponseDTO {
     quantity: number;
     customerName: string;
     notes?: string;
+    items?: Array<{
+      id: string;
+      orderId: string;
+      status: string;
+      recipeId?: string;
+      recipeName?: string;
+      createdAt: string;
+      assignedAt?: string;
+      preparedAt?: string;
+      deliveredAt?: string;
+      failureReason?: string;
+    }>;
+    totalItems?: number;
+    completedItems?: number;
+    pendingItems?: number;
+    progress?: number;
     createdAt: string;
     completedAt?: string;
     updatedAt: string;
@@ -39,18 +55,12 @@ export class GetOrderStatusUseCase {
         };
       }
 
+      // Use toPrimitives() to get complete order data including items
+      const orderData = order.toPrimitives();
+
       return {
         success: true,
-        order: {
-          id: order.getId().getValue(),
-          status: order.getStatus().getValue(),
-          quantity: order.getQuantity().getValue(),
-          customerName: order.getCustomerInfo().getName(),
-          notes: order.getCustomerInfo().getNotes(),
-          createdAt: order.getCreatedAt().toISOString(),
-          completedAt: order.getCompletedAt()?.toISOString(),
-          updatedAt: order.getUpdatedAt().toISOString(),
-        },
+        order: orderData,
       };
     } catch (error: any) {
       console.error('Error getting order status:', error);
