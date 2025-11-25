@@ -260,6 +260,20 @@ export class Order {
     return this.items.every(item => item.isCompleted());
   }
 
+  areAllItemsReady(): boolean {
+    return this.items.every(item => item.isReady() || item.isDelivered());
+  }
+
+  areAllItemsDelivered(): boolean {
+    return this.items.every(item => item.isDelivered());
+  }
+
+  hasAnyItemInProgress(): boolean {
+    return this.items.some(item =>
+      !item.isPending() && !item.isCompleted() && !item.isReady()
+    );
+  }
+
   hasFailedItems(): boolean {
     return this.items.some(item => item.isFailed());
   }
