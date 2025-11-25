@@ -160,6 +160,7 @@ export class WarehouseResponsesConsumer {
 
   /**
    * Process a single message
+   * Supports unified payload.data wrapper format
    */
   private async processMessage(
     messageId: string,
@@ -171,16 +172,46 @@ export class WarehouseResponsesConsumer {
       // Parse fields from Redis format
       const parsedFields = this.parseFields(fields);
 
-      const data: IngredientsResponsePayload = {
-        plateId: parsedFields.plateId,
-        orderItemId: parsedFields.orderItemId,
-        success: parsedFields.success === 'true',
-        ingredients: parsedFields.ingredients,
-        availableIngredients: parsedFields.availableIngredients,
-        unavailableIngredients: parsedFields.unavailableIngredients,
-        message: parsedFields.message,
-        processedAt: parsedFields.processedAt,
-      };
+      let data: IngredientsResponsePayload;
+
+      if (parsedFields.payload) {
+        // New unified format: { eventType, eventId, aggregateId, occurredOn, payload: JSON.stringify({ data: {...} }) }
+        const payloadObj = JSON.parse(parsedFields.payload);
+        const innerData = payloadObj.data;
+
+        data = {
+          plateId: innerData.plateId,
+          orderItemId: innerData.orderItemId,
+          success: innerData.success === true || innerData.success === 'true',
+          ingredients: typeof innerData.ingredients === 'string'
+            ? innerData.ingredients
+            : JSON.stringify(innerData.ingredients),
+          availableIngredients: innerData.availableIngredients
+            ? (typeof innerData.availableIngredients === 'string'
+              ? innerData.availableIngredients
+              : JSON.stringify(innerData.availableIngredients))
+            : undefined,
+          unavailableIngredients: innerData.unavailableIngredients
+            ? (typeof innerData.unavailableIngredients === 'string'
+              ? innerData.unavailableIngredients
+              : JSON.stringify(innerData.unavailableIngredients))
+            : undefined,
+          message: innerData.message,
+          processedAt: innerData.processedAt,
+        };
+      } else {
+        // Legacy flat format (backwards compatibility)
+        data = {
+          plateId: parsedFields.plateId,
+          orderItemId: parsedFields.orderItemId,
+          success: parsedFields.success === 'true',
+          ingredients: parsedFields.ingredients,
+          availableIngredients: parsedFields.availableIngredients,
+          unavailableIngredients: parsedFields.unavailableIngredients,
+          message: parsedFields.message,
+          processedAt: parsedFields.processedAt,
+        };
+      }
 
       logger.info('Processing warehouse response', {
         messageId,

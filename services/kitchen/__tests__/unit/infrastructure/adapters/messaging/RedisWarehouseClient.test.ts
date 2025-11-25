@@ -22,7 +22,7 @@ describe('RedisWarehouseClient', () => {
   });
 
   describe('requestIngredients', () => {
-    it('should send ingredient request to warehouse stream', async () => {
+    it('should send ingredient request to warehouse stream with unified format', async () => {
       const payload = {
         plateId: 'plate-123',
         orderItemId: 'item-456',
@@ -36,19 +36,31 @@ describe('RedisWarehouseClient', () => {
 
       await client.requestIngredients(payload);
 
+      // Verify the unified message format with payload.data wrapper
       expect(mockRedisInstance.xadd).toHaveBeenCalledWith(
         'stream:warehouse:requests',
         '*',
         expect.objectContaining({
-          plateId: 'plate-123',
-          orderItemId: 'item-456',
-          recipeId: 'recipe-abc',
-          recipeName: 'Tomato Salad',
-          ingredients: JSON.stringify({ tomato: 2, onion: 1 }),
-          requestedAt: '2025-01-01T00:00:00.000Z',
-          requestedBy: 'kitchen-service',
+          eventType: 'IngredientsRequested',
+          eventId: expect.any(String),
+          aggregateId: 'plate-123',
+          occurredOn: expect.any(String),
+          payload: expect.any(String),
         })
       );
+
+      // Verify the payload contains the data wrapper with correct structure
+      const callArgs = mockRedisInstance.xadd.mock.calls[0][2];
+      const parsedPayload = JSON.parse(callArgs.payload);
+      expect(parsedPayload.data).toEqual({
+        plateId: 'plate-123',
+        orderItemId: 'item-456',
+        recipeId: 'recipe-abc',
+        recipeName: 'Tomato Salad',
+        ingredients: { tomato: 2, onion: 1 },
+        requestedAt: '2025-01-01T00:00:00.000Z',
+        requestedBy: 'kitchen-service',
+      });
     });
 
     it('should throw error if request fails', async () => {

@@ -41,17 +41,28 @@ export class RedisWarehouseClient implements WarehouseClient {
   /**
    * Request ingredients from warehouse (async)
    * Publishes event to warehouse:requests stream
+   * Uses unified payload.data wrapper format
    */
   async requestIngredients(payload: IngredientsRequestPayload): Promise<void> {
     try {
+      const eventId = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
       const messageData = {
-        plateId: payload.plateId,
-        orderItemId: payload.orderItemId,
-        recipeId: payload.recipeId,
-        recipeName: payload.recipeName,
-        ingredients: JSON.stringify(payload.ingredients),
-        requestedAt: payload.requestedAt,
-        requestedBy: 'kitchen-service',
+        eventType: 'IngredientsRequested',
+        eventId,
+        aggregateId: payload.plateId,
+        occurredOn: new Date().toISOString(),
+        payload: JSON.stringify({
+          data: {
+            plateId: payload.plateId,
+            orderItemId: payload.orderItemId,
+            recipeId: payload.recipeId,
+            recipeName: payload.recipeName,
+            ingredients: payload.ingredients,
+            requestedAt: payload.requestedAt,
+            requestedBy: 'kitchen-service',
+          },
+        }),
       };
 
       // Publish to warehouse requests stream
