@@ -22,6 +22,7 @@ jobs:
       orders: ${{ steps.changes.outputs.orders }}
       kitchen: ${{ steps.changes.outputs.kitchen }}
       warehouse: ${{ steps.changes.outputs.warehouse }}
+      dashboard: ${{ steps.changes.outputs.dashboard }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -42,6 +43,8 @@ jobs:
               - 'services/kitchen/**'
             warehouse:
               - 'services/warehouse/**'
+            dashboard:
+              - 'apps/dashboard/**'
 
   # Orders Service
   orders:
@@ -77,6 +80,7 @@ jobs:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_KITCHEN }}
 
+  # Warehouse Service
   warehouse:
     name: Warehouse Service
     needs: detect-changes
@@ -92,3 +96,20 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_WAREHOUSE }}
+
+  # App Dashboard
+  dashboard:
+    name: App Dashboard
+    needs: detect-changes
+    if: needs.detect-changes.outputs.dashboard == 'true'
+    uses: ./.github/workflows/service-ci.yml
+    with:
+      service-name: dashboard
+      service-path: ./apps/dashboard
+      should-deploy: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/test' || github.ref == 'refs/heads/main') }}
+      environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'preview' }}
+      custom-domain: ${{ github.ref == 'refs/heads/main' && vars.DASHBOARD_DOMAIN_PROD || (github.ref == 'refs/heads/test' && vars.DASHBOARD_DOMAIN_STAGING || '') }}
+    secrets:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_DASHBOARD }}
