@@ -204,7 +204,7 @@ describe('UpdateOrderItemStatusUseCase', () => {
 
       expect(firstItem.getStatus()).toBe(OrderItemStatus.COOKING);
 
-      // 5. Mark as ready
+      // 5. Mark as ready (auto-delivers immediately)
       const result = await useCase.execute({
         orderId: testOrder.getId().getValue(),
         itemId: firstItem.getId().getValue(),
@@ -212,8 +212,9 @@ describe('UpdateOrderItemStatusUseCase', () => {
       });
 
       expect(result.success).toBe(true);
-      expect(firstItem.getStatus()).toBe(OrderItemStatus.READY);
-      expect(firstItem.isReady()).toBe(true);
+      // Auto-delivery: READY → DELIVERED automatically
+      expect(firstItem.getStatus()).toBe(OrderItemStatus.DELIVERED);
+      expect(firstItem.isDelivered()).toBe(true);
     });
   });
 
@@ -391,7 +392,8 @@ describe('UpdateOrderItemStatusUseCase', () => {
       const result = await useCase.execute(dto);
 
       expect(result.success).toBe(true);
-      expect(firstItem.getStatus()).toBe(OrderItemStatus.READY);
+      // Auto-delivery: READY → DELIVERED automatically
+      expect(firstItem.getStatus()).toBe(OrderItemStatus.DELIVERED);
       expect(firstItem.getRecipeName()).toBeUndefined();
     });
   });
@@ -420,8 +422,8 @@ describe('UpdateOrderItemStatusUseCase', () => {
 
       expect(result.success).toBe(true);
       expect(result.order?.totalItems).toBe(3);
-      expect(result.order?.completedItems).toBe(0); // READY but not DELIVERED
-      expect(result.order?.progress).toBe(0);
+      expect(result.order?.completedItems).toBe(1); // READY counts as completed for progress
+      expect(result.order?.progress).toBe(33); // 1/3 = 33%
     });
 
     it('should track completed items correctly', async () => {
