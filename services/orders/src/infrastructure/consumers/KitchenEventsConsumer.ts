@@ -177,6 +177,15 @@ export class KitchenEventsConsumer {
       }
 
       // Execute use case to update order item
+      logger.debug('Executing UpdateOrderItemStatusUseCase', {
+        messageId,
+        orderId: payload.orderId,
+        itemId: payload.itemId,
+        targetStatus: status,
+        recipeId: payload.recipeId,
+        recipeName: payload.recipeName,
+      });
+
       const result = await this.updateOrderItemUseCase.execute({
         orderId: payload.orderId,
         itemId: payload.itemId,
@@ -191,10 +200,18 @@ export class KitchenEventsConsumer {
           messageId,
           orderId: payload.orderId,
           itemId: payload.itemId,
+          targetStatus: status,
+          error: result.error,
         });
         // Don't ACK failed messages - they'll be retried
         return;
       }
+
+      logger.debug('UpdateOrderItemStatusUseCase executed successfully', {
+        messageId,
+        itemId: payload.itemId,
+        currentStatus: result.item?.status,
+      });
 
       // ACK message after successful processing
       await this.ackMessage(messageId);

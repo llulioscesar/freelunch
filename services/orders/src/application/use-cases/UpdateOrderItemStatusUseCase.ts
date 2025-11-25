@@ -89,6 +89,14 @@ export class UpdateOrderItemStatusUseCase {
         };
       }
 
+      logger.debug('Found order item, current state', {
+        itemId: dto.itemId,
+        currentStatus: item.getStatus(),
+        targetStatus: dto.status,
+        recipeId: item.getRecipeId(),
+        recipeName: item.getRecipeName(),
+      });
+
       // 3. Update item status based on event
       switch (dto.status) {
         case OrderItemStatus.ASSIGNED:
