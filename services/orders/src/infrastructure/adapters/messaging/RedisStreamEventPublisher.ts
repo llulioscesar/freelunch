@@ -81,10 +81,10 @@ export class RedisStreamEventPublisher implements EventPublisher {
   private async routeEventToSpecializedStream(event: DomainEvent): Promise<void> {
     const routingMap: Record<string, string> = {
       // Kitchen Service listens to this stream
-      'order.created': 'stream:kitchen',
+      'order.created': 'stream:orders:events',
 
       // Warehouse Service listens to this stream
-      'ingredients.requested': 'stream:warehouse',
+      'ingredients.requested': 'stream:warehouse:requests',
 
       // Analytics Service listens to this stream
       'order.completed': 'stream:analytics',
@@ -116,7 +116,9 @@ export class RedisStreamEventPublisher implements EventPublisher {
       eventId: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       aggregateId: event.aggregateId,
       occurredOn: event.occurredOn.toISOString(),
-      payload: JSON.stringify(primitives),
+      payload: JSON.stringify({
+        data: primitives,
+      }),
     };
   }
 
