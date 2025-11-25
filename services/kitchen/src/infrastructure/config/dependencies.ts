@@ -7,10 +7,13 @@
 import { prismaClient } from '../adapters/persistence/PrismaClient';
 import { RecipeRepository } from '../../domain/repositories/RecipeRepository';
 import { PlateRepository } from '../../domain/repositories/PlateRepository';
+import { StatusHistoryRepository } from '../../domain/repositories/StatusHistoryRepository';
 import { EventPublisher } from '../../application/ports/out/EventPublisher';
 import { WarehouseClient } from '../../application/ports/out/WarehouseClient';
 import { PrismaRecipeRepository } from '../adapters/persistence/PrismaRecipeRepository';
 import { PrismaPlateRepository } from '../adapters/persistence/PrismaPlateRepository';
+import { PrismaStatusHistoryRepository } from '../adapters/persistence/PrismaStatusHistoryRepository';
+import { HistoryTrackingPlateRepository } from '../adapters/persistence/HistoryTrackingPlateRepository';
 import { RedisStreamEventPublisher } from '../adapters/messaging/RedisStreamEventPublisher';
 import { RedisWarehouseClient } from '../adapters/messaging/RedisWarehouseClient';
 import { ProcessOrderUseCase } from '../../application/use-cases/ProcessOrderUseCase';
@@ -25,6 +28,7 @@ export interface Dependencies {
   // Repositories
   recipeRepository: RecipeRepository;
   plateRepository: PlateRepository;
+  statusHistoryRepository: StatusHistoryRepository;
 
   // Ports
   eventPublisher: EventPublisher;
@@ -53,7 +57,14 @@ export class DependencyContainer {
 
     // Repositories
     const recipeRepository: RecipeRepository = new PrismaRecipeRepository(prismaClient);
-    const plateRepository: PlateRepository = new PrismaPlateRepository(prismaClient);
+    const basePlateRepository: PlateRepository = new PrismaPlateRepository(prismaClient);
+    const statusHistoryRepository: StatusHistoryRepository = new PrismaStatusHistoryRepository(prismaClient);
+
+    // Wrap plate repository with history tracking
+    const plateRepository: PlateRepository = new HistoryTrackingPlateRepository(
+      basePlateRepository,
+      statusHistoryRepository
+    );
 
     // Event Publisher
     const eventPublisher: EventPublisher = new RedisStreamEventPublisher();
@@ -98,6 +109,7 @@ export class DependencyContainer {
     this.dependencies = {
       recipeRepository,
       plateRepository,
+      statusHistoryRepository,
       eventPublisher,
       warehouseClient,
       processOrderUseCase,

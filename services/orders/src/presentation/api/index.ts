@@ -51,6 +51,8 @@ export default async function handler(
         'GET /api/list - List all orders',
         'GET /api/status?id={orderId} - Get order detail with items',
         'PATCH /api/status?id={orderId} - Update order status',
+        'GET /api/history?orderId={orderId} - Get status history for all items in order',
+        'GET /api/history?itemId={itemId} - Get status history for specific item',
       ],
       layers: {
         domain: 'Ready',

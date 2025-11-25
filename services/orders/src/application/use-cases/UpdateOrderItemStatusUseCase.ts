@@ -11,6 +11,7 @@
  * - DISH_FAILED: Dish preparation failed
  */
 import { OrderRepository } from '../../domain/repositories/OrderRepository';
+import { StatusHistoryRepository } from '../../domain/repositories/StatusHistoryRepository';
 import { OrderId } from '../../domain/value-objects/OrderId';
 import { OrderItemId } from '../../domain/value-objects/OrderItemId';
 import { OrderItemStatus } from '../../domain/entities/OrderItem';
@@ -48,7 +49,8 @@ export interface UpdateOrderItemStatusResponseDTO {
 export class UpdateOrderItemStatusUseCase {
   constructor(
     private readonly orderRepository: OrderRepository,
-    private readonly eventPublisher: EventPublisher
+    private readonly eventPublisher: EventPublisher,
+    private readonly statusHistoryRepository?: StatusHistoryRepository
   ) {}
 
   async execute(dto: UpdateOrderItemStatusDTO): Promise<UpdateOrderItemStatusResponseDTO> {
@@ -89,9 +91,12 @@ export class UpdateOrderItemStatusUseCase {
         };
       }
 
+      // Capture previous status for history
+      const previousStatus = item.getStatus();
+
       logger.debug('Found order item, current state', {
         itemId: dto.itemId,
-        currentStatus: item.getStatus(),
+        currentStatus: previousStatus,
         targetStatus: dto.status,
         recipeId: item.getRecipeId(),
         recipeName: item.getRecipeName(),
@@ -151,10 +156,35 @@ export class UpdateOrderItemStatusUseCase {
           };
       }
 
-      // 4. Check if order should be auto-completed
+      // 4. Record status change in history
+      if (this.statusHistoryRepository && previousStatus !== dto.status) {
+        try {
+          await this.statusHistoryRepository.record({
+            orderItemId: dto.itemId,
+            fromStatus: previousStatus,
+            toStatus: dto.status,
+            recipeId: dto.recipeId || item.getRecipeId(),
+            recipeName: dto.recipeName || item.getRecipeName(),
+            reason: dto.failureReason,
+          });
+          logger.debug('Status history recorded', {
+            itemId: dto.itemId,
+            fromStatus: previousStatus,
+            toStatus: dto.status,
+          });
+        } catch (historyError) {
+          // Don't fail the main operation if history recording fails
+          logger.warn('Failed to record status history', {
+            itemId: dto.itemId,
+            error: (historyError as Error).message,
+          });
+        }
+      }
+
+      // 5. Check if order should be auto-completed
       this.checkAndCompleteOrder(order);
 
-      // 5. Save updated order
+      // 6. Save updated order
       await this.orderRepository.update(order);
 
       logger.logRepositoryOperation('update', 'Order', orderId.getValue());

@@ -49,6 +49,8 @@ export default async function handler(
       endpoints: [
         'GET /api/recipes - List available recipes',
         'GET /api/plates - List plates (supports ?status= and ?orderId= filters)',
+        'GET /api/history?orderId={orderId} - Get status history for all plates in order',
+        'GET /api/history?plateId={plateId} - Get status history for specific plate',
         'GET /api/metrics - Prometheus metrics endpoint',
       ],
       layers: {

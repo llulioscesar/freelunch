@@ -51,9 +51,31 @@ model Plate {
   failureReason String?
   retryCount    Int       @default(0)
 
+  statusHistory PlateStatusHistory[]
+
   @@index([orderId])
   @@index([orderItemId])
   @@index([status])
   @@index([createdAt])
   @@unique([orderItemId])
+}
+
+// Status history for complete traceability
+model PlateStatusHistory {
+  id        String   @id @default(cuid())
+  plateId   String
+  plate     Plate    @relation(fields: [plateId], references: [id], onDelete: Cascade)
+
+  fromStatus  String?  // null for initial state
+  toStatus    String
+  changedAt   DateTime @default(now())
+
+  // Additional context
+  recipeId    String?
+  recipeName  String?
+  reason      String?  // For failures or notes
+  metadata    Json?    // Any extra data (ingredients, etc)
+
+  @@index([plateId])
+  @@index([changedAt])
 }
