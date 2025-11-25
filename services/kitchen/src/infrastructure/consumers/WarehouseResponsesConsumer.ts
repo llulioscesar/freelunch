@@ -176,7 +176,13 @@ export class WarehouseResponsesConsumer {
 
       if (parsedFields.payload) {
         // New unified format: { eventType, eventId, aggregateId, occurredOn, payload: JSON.stringify({ data: {...} }) }
-        const payloadObj = JSON.parse(parsedFields.payload);
+        // Handle both string and already-parsed object (Upstash may return either)
+        let payloadObj;
+        if (typeof parsedFields.payload === 'string') {
+          payloadObj = JSON.parse(parsedFields.payload);
+        } else {
+          payloadObj = parsedFields.payload;
+        }
         const innerData = payloadObj.data;
 
         data = {
