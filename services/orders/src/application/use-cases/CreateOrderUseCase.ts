@@ -7,6 +7,7 @@ import { OrderId } from '../../domain/value-objects/OrderId';
 import { Quantity } from '../../domain/value-objects/Quantity';
 import { CustomerInfo } from '../../domain/value-objects/CustomerInfo';
 import { OrderRepository } from '../../domain/repositories/OrderRepository';
+import { StatusHistoryRepository } from '../../domain/repositories/StatusHistoryRepository';
 import { EventPublisher } from '../ports/out/EventPublisher';
 import { CreateOrderDTO, CreateOrderResponseDTO } from '../dto/CreateOrderDTO';
 import { logger } from '../../infrastructure/logging/Logger';
@@ -15,7 +16,8 @@ import { metricsService } from '../../infrastructure/metrics/MetricsService';
 export class CreateOrderUseCase {
   constructor(
     private readonly orderRepository: OrderRepository,
-    private readonly eventPublisher: EventPublisher
+    private readonly eventPublisher: EventPublisher,
+    private readonly statusHistoryRepository?: StatusHistoryRepository
   ) {}
 
   async execute(dto: CreateOrderDTO): Promise<CreateOrderResponseDTO> {
@@ -50,6 +52,25 @@ export class CreateOrderUseCase {
       await this.orderRepository.save(order);
 
       logger.logRepositoryOperation('save', 'Order', orderId.getValue());
+
+      // Record initial status for all items in history
+      if (this.statusHistoryRepository) {
+        const items = order.getItems();
+        for (const item of items) {
+          try {
+            await this.statusHistoryRepository.record({
+              orderItemId: item.getId().getValue(),
+              fromStatus: null, // Initial state
+              toStatus: 'PENDING',
+            });
+          } catch (historyError) {
+            logger.warn('Failed to record initial status history', {
+              itemId: item.getId().getValue(),
+              error: (historyError as Error).message,
+            });
+          }
+        }
+      }
 
       // Publish domain events
       const events = order.getDomainEvents();

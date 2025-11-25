@@ -4,8 +4,10 @@
  */
 import { PrismaClient } from '@prisma/client';
 import { OrderRepository } from '../../domain/repositories/OrderRepository';
+import { StatusHistoryRepository } from '../../domain/repositories/StatusHistoryRepository';
 import { EventPublisher } from '../../application/ports/out/EventPublisher';
 import { PrismaOrderRepository } from '../adapters/persistence/PrismaOrderRepository';
+import { PrismaStatusHistoryRepository } from '../adapters/persistence/PrismaStatusHistoryRepository';
 import { CachedOrderRepository } from '../adapters/persistence/CachedOrderRepository';
 import { InMemoryOrderRepository } from '../adapters/persistence/InMemoryOrderRepository';
 import { MetricsOrderRepository } from '../adapters/persistence/MetricsOrderRepository';
@@ -19,6 +21,7 @@ import { UpdateOrderItemStatusUseCase } from '../../application/use-cases/Update
 
 export interface Dependencies {
   orderRepository: OrderRepository;
+  statusHistoryRepository: StatusHistoryRepository;
   eventPublisher: EventPublisher;
   createOrderUseCase: CreateOrderUseCase;
   getOrderStatusUseCase: GetOrderStatusUseCase;
@@ -38,14 +41,19 @@ export class DependencyContainer {
 
     // Repository with Redis caching
     let orderRepository: OrderRepository;
+    let statusHistoryRepository: StatusHistoryRepository;
+
     if (isTest) {
       // Use in-memory repository for tests (no external dependencies)
       orderRepository = new InMemoryOrderRepository();
+      // For tests, we'll use a mock or skip history (statusHistoryRepository will be undefined for now)
+      statusHistoryRepository = undefined as any;
     } else {
       const prismaClient = new PrismaClient({
         log: isProd ? ['error'] : ['query', 'error', 'warn'],
       });
       const baseRepository = new PrismaOrderRepository(prismaClient);
+      statusHistoryRepository = new PrismaStatusHistoryRepository(prismaClient);
 
       // Wrap with cache if Redis is configured
       if (RedisClient.isConfigured()) {
@@ -72,7 +80,8 @@ export class DependencyContainer {
     // Use Cases
     const createOrderUseCase = new CreateOrderUseCase(
       orderRepository,
-      eventPublisher
+      eventPublisher,
+      statusHistoryRepository
     );
     const getOrderStatusUseCase = new GetOrderStatusUseCase(orderRepository);
     const listOrdersUseCase = new ListOrdersUseCase(orderRepository);
@@ -82,11 +91,13 @@ export class DependencyContainer {
     );
     const updateOrderItemStatusUseCase = new UpdateOrderItemStatusUseCase(
       orderRepository,
-      eventPublisher
+      eventPublisher,
+      statusHistoryRepository
     );
 
     this.dependencies = {
       orderRepository,
+      statusHistoryRepository,
       eventPublisher,
       createOrderUseCase,
       getOrderStatusUseCase,
