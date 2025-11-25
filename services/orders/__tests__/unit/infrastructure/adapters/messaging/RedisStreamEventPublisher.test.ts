@@ -67,9 +67,9 @@ describe('RedisStreamEventPublisher (Unit with Mocks)', () => {
 
       await publisher.publish(event);
 
-      // Should be called twice: once for main stream, once for kitchen stream
+      // Should be called twice: once for main stream, once for orders:events stream
       expect(mockRedis.xadd).toHaveBeenCalledWith(
-        'stream:kitchen',
+        'stream:orders:events',
         '*',
         expect.any(Object)
       );

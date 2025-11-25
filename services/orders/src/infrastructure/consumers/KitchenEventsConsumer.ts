@@ -33,7 +33,7 @@ export interface KitchenEventPayload {
 
 export class KitchenEventsConsumer {
   private redis: Redis;
-  private streamName = 'stream:kitchen:responses';
+  private streamName = 'stream:kitchen:events';
   private consumerGroup = 'orders-service';
   private consumerId: string;
   private isRunning = false;
@@ -259,7 +259,8 @@ export class KitchenEventsConsumer {
     // Parse nested JSON if needed
     if (payload.payload) {
       const parsed = JSON.parse(payload.payload);
-      Object.assign(payload, parsed);
+      // Standard format: { data: { ... } }
+      Object.assign(payload, parsed.data || parsed);
     }
 
     return payload as KitchenEventPayload;

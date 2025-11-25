@@ -97,7 +97,9 @@ export class RedisStreamEventPublisher implements EventPublisher {
       eventType: event.eventName,
       eventId: event.eventId,
       occurredOn: event.occurredOn.toISOString(),
-      payload: JSON.stringify(primitives),
+      payload: JSON.stringify({
+        data: primitives,
+      }),
     };
   }
 

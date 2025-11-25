@@ -6,7 +6,7 @@
  *
  * Configuration:
  * - URL: https://your-vercel-url.vercel.app/api/workers/kitchen-events
- * - Method: GET or POST
+ * - Method: POST
  * - Schedule: Every 1 minute
  * - Service: cron-job.org (free tier supports up to 50 jobs, 1-minute intervals)
  */
@@ -19,8 +19,8 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
-  // Only allow POST (from cron) or GET (for manual trigger)
-  if (req.method !== 'POST' && req.method !== 'GET') {
+  // Only allow POST requests
+  if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
