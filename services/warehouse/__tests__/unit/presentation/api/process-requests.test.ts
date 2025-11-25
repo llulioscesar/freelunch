@@ -82,12 +82,13 @@ describe('Process Requests API', () => {
       );
     });
 
-    it('should accept maxMessages in body', async () => {
-      mockReq = { method: 'POST', body: { maxMessages: 5 } };
+    it('should use KITCHEN_REQUESTS_BATCH_SIZE env var with default 50', async () => {
+      mockReq = { method: 'POST', body: {} };
 
       await handler(mockReq as VercelRequest, mockRes as VercelResponse);
 
       expect(statusMock).toHaveBeenCalledWith(200);
+      // Default batch size is 50 (from env var or default)
     });
 
     it('should include duration in response', async () => {

@@ -138,6 +138,56 @@ describe('KitchenRequestsConsumer', () => {
       expect(mockRedis.xack).toHaveBeenCalled();
     });
 
+    it('should process messages when payload is already an object (Upstash behavior)', async () => {
+      // Upstash sometimes returns payload as already-parsed object instead of string
+      const payload = {
+        data: {
+          plateId: 'plate-123',
+          orderItemId: 'item-456',
+          recipeId: 'recipe-789',
+          recipeName: 'Test Recipe',
+          ingredients: [{ name: 'onion', quantity: 3 }],
+          requestedAt: new Date().toISOString(),
+        },
+      };
+
+      mockRedis.xreadgroup.mockResolvedValue([
+        [
+          'stream:warehouse:requests',
+          [
+            [
+              'message-id-1',
+              {
+                eventType: 'IngredientsRequested',
+                payload: payload, // Object, not string!
+              },
+            ],
+          ],
+        ],
+      ]);
+
+      mockUseCase.execute.mockResolvedValue({
+        success: true,
+        plateId: 'plate-123',
+        orderItemId: 'item-456',
+        processedIngredients: { onion: 3 },
+        unavailableIngredients: [],
+        message: 'Success',
+      });
+
+      mockRedis.xack.mockResolvedValue(1);
+
+      const result = await consumer.processBatch(10);
+
+      expect(result).toBe(1);
+      expect(mockUseCase.execute).toHaveBeenCalledWith(
+        expect.objectContaining({
+          plateId: 'plate-123',
+          ingredients: { onion: 3 },
+        })
+      );
+    });
+
     it('should process messages with legacy flat format', async () => {
       mockRedis.xreadgroup.mockResolvedValue([
         [
