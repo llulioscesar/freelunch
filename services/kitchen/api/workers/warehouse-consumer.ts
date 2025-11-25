@@ -33,7 +33,8 @@ export default async function handler(
     await warehouseResponsesConsumer.initialize();
 
     // Process batch of messages (serverless-friendly)
-    const processedCount = await warehouseResponsesConsumer.processBatch(10);
+    const batchSize = parseInt(process.env.WAREHOUSE_CONSUMER_BATCH_SIZE || '50', 10);
+    const processedCount = await warehouseResponsesConsumer.processBatch(batchSize);
 
     const duration = Date.now() - startTime;
 

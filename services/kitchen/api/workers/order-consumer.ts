@@ -33,7 +33,8 @@ export default async function handler(
     await orderEventsConsumer.initialize();
 
     // Process batch of messages (serverless-friendly)
-    const processedCount = await orderEventsConsumer.processBatch(10);
+    const batchSize = parseInt(process.env.ORDER_CONSUMER_BATCH_SIZE || '50', 10);
+    const processedCount = await orderEventsConsumer.processBatch(batchSize);
 
     const duration = Date.now() - startTime;
 
