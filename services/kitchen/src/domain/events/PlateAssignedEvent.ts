@@ -22,17 +22,12 @@ export class PlateAssignedEvent extends DomainEvent {
 
   toPrimitives(): any {
     return {
-      eventId: this.eventId,
-      eventName: this.eventName,
-      occurredOn: this.occurredOn.toISOString(),
-      data: {
-        plateId: this.plateId,
-        orderId: this.orderId,
-        orderItemId: this.orderItemId,
-        recipeId: this.recipeId,
-        recipeName: this.recipeName,
-        ingredients: this.ingredients,
-      },
+      plateId: this.plateId,
+      orderId: this.orderId,
+      orderItemId: this.orderItemId,
+      recipeId: this.recipeId,
+      recipeName: this.recipeName,
+      ingredients: this.ingredients,
     };
   }
 }
