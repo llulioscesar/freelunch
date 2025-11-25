@@ -9,6 +9,7 @@ import { RecipeId } from '../value-objects/RecipeId';
 import { Ingredients } from '../value-objects/Ingredients';
 import { PlateAssignedEvent } from '../events/PlateAssignedEvent';
 import { IngredientsRequestedEvent } from '../events/IngredientsRequestedEvent';
+import { PlateCookingStartedEvent } from '../events/PlateCookingStartedEvent';
 import { PlateReadyEvent } from '../events/PlateReadyEvent';
 import { PlateFailedEvent } from '../events/PlateFailedEvent';
 import { logger } from '../../infrastructure/logging/Logger';
@@ -154,6 +155,17 @@ export class Plate {
 
     this.status = new PlateStatus(PlateStatusEnum.COOKING);
     this.cookingAt = new Date();
+
+    // Emit domain event
+    const event = new PlateCookingStartedEvent(
+      this.id.getValue(),
+      this.orderReference.getOrderId(),
+      this.orderReference.getOrderItemId(),
+      this.recipeId!.getValue(),
+      this.recipeName || '',
+      this.cookingAt
+    );
+    this.addDomainEvent(event);
 
     logger.logDomainEvent('plate.cooking', this.id.getValue(), {
       recipeName: this.recipeName,
