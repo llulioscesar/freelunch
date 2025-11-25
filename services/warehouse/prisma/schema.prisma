@@ -1,0 +1,40 @@
+// Prisma Schema for Warehouse Service
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// InventoryItem entity - Stock of ingredients
+model InventoryItem {
+  id              String   @id @default(cuid())
+  ingredientName  String   @unique
+  quantity        Int      @default(5)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([ingredientName])
+}
+
+// Purchase entity - History of market purchases
+model Purchase {
+  id                String    @id @default(cuid())
+  ingredientName    String
+  requestedQuantity Int
+  obtainedQuantity  Int       @default(0)
+  status            String    @default("pending") // pending, completed, failed
+  plateId           String?
+  orderId           String?
+  errorMessage      String?
+  createdAt         DateTime  @default(now())
+  completedAt       DateTime?
+
+  @@index([ingredientName])
+  @@index([status])
+  @@index([plateId])
+  @@index([createdAt])
+}
