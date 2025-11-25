@@ -203,7 +203,18 @@ export class KitchenEventsConsumer {
           targetStatus: status,
           error: result.error,
         });
-        // Don't ACK failed messages - they'll be retried
+
+        // ACK messages for non-existent orders to avoid blocking the stream
+        if (result.error === 'Order not found') {
+          logger.warn('ACKing event for non-existent order (stale event)', {
+            messageId,
+            orderId: payload.orderId,
+          });
+          await this.ackMessage(messageId);
+          return;
+        }
+
+        // Don't ACK other failures - they'll be retried
         return;
       }
 
