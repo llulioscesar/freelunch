@@ -39,9 +39,23 @@ export class ProcessOrderUseCase {
       }
 
       const plates: Plate[] = [];
+      let newPlatesCreated = 0;
 
-      // Create a Plate for each OrderItem
+      // Create a Plate for each OrderItem (idempotent)
       for (const item of dto.items) {
+        // Check if plate already exists for this order item
+        const existingPlate = await this.plateRepository.findByOrderItemId(item.itemId);
+
+        if (existingPlate) {
+          logger.info(`Plate already exists for order item, skipping`, {
+            plateId: existingPlate.getId().getValue(),
+            orderItemId: item.itemId,
+          });
+          plates.push(existingPlate);
+          continue;
+        }
+
+        // Create new plate
         const plateId = new PlateId();
         const orderReference = new OrderReference(dto.orderId, item.itemId);
 
@@ -50,6 +64,7 @@ export class ProcessOrderUseCase {
         // Save plate
         await this.plateRepository.save(plate);
         plates.push(plate);
+        newPlatesCreated++;
 
         // Record metrics
         metricsService.recordPlateCreated(dto.orderId);
@@ -60,7 +75,12 @@ export class ProcessOrderUseCase {
         });
       }
 
-      logger.info(`Created ${plates.length} plates for order ${dto.orderId}`);
+      logger.info(`Processed order`, {
+        orderId: dto.orderId,
+        totalPlates: plates.length,
+        newPlatesCreated,
+        existingPlates: plates.length - newPlatesCreated,
+      });
 
       const duration = Date.now() - startTime;
       const durationSeconds = duration / 1000;

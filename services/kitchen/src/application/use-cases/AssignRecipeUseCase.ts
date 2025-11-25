@@ -43,6 +43,23 @@ export class AssignRecipeUseCase {
         throw new Error(`Plate not found: ${input.plateId}`);
       }
 
+      // Check if plate already has a recipe assigned (idempotent)
+      if (plate.getRecipeId()) {
+        logger.info(`Plate already has recipe assigned, skipping`, {
+          plateId: input.plateId,
+          recipeId: plate.getRecipeId()!.getValue(),
+          recipeName: plate.getRecipeName(),
+        });
+
+        return {
+          success: true,
+          plateId: input.plateId,
+          recipeId: plate.getRecipeId()!.getValue(),
+          recipeName: plate.getRecipeName()!,
+          ingredients: plate.getIngredients()!.toPrimitives(),
+        };
+      }
+
       // Get random recipe
       const recipe = await this.recipeRepository.getRandomRecipe();
       if (!recipe) {
