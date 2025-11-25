@@ -387,6 +387,65 @@ export class WarehouseResponsesConsumer {
   }
 
   /**
+   * Get pending messages (for debugging/monitoring)
+   */
+  async getPendingMessages(): Promise<any> {
+    try {
+      return await this.redis.xpending(
+        this.streamName,
+        this.consumerGroup,
+        '-',
+        '+',
+        100 // Get up to 100 pending messages
+      );
+    } catch (error) {
+      logger.error('Failed to get pending messages', error as Error);
+      return [];
+    }
+  }
+
+  /**
+   * Claim stale messages (for fault tolerance)
+   * Messages idle for more than 5 minutes will be claimed by this consumer
+   */
+  async claimStaleMessages(): Promise<void> {
+    const minIdleTime = 300000; // 5 minutes in milliseconds
+
+    try {
+      const pending = await this.getPendingMessages();
+
+      if (!pending || pending.length === 0) {
+        return;
+      }
+
+      const staleMessageIds = pending
+        .filter((msg: any) => msg.idleTime > minIdleTime)
+        .map((msg: any) => msg.id);
+
+      if (staleMessageIds.length === 0) {
+        return;
+      }
+
+      logger.info('Claiming stale messages', {
+        count: staleMessageIds.length,
+        consumerId: this.consumerId,
+      });
+
+      for (const messageId of staleMessageIds) {
+        await this.redis.xclaim(
+          this.streamName,
+          this.consumerGroup,
+          this.consumerId,
+          minIdleTime,
+          messageId
+        );
+      }
+    } catch (error) {
+      logger.error('Failed to claim stale messages', error as Error);
+    }
+  }
+
+  /**
    * Utility: Sleep
    */
   private sleep(ms: number): Promise<void> {

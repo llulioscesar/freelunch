@@ -258,7 +258,13 @@ export class KitchenEventsConsumer {
 
     // Parse nested JSON if needed
     if (payload.payload) {
-      const parsed = JSON.parse(payload.payload);
+      // payload.payload can be string or already parsed object
+      let parsed;
+      if (typeof payload.payload === 'string') {
+        parsed = JSON.parse(payload.payload);
+      } else {
+        parsed = payload.payload;
+      }
       // Standard format: { data: { ... } }
       Object.assign(payload, parsed.data || parsed);
     }
