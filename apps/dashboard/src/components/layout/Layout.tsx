@@ -34,7 +34,7 @@ function getRouteInfo(pathname: string): { title: string; parent?: string; paren
   if (pathname.startsWith('/orders/')) {
     const orderId = pathname.split('/')[2];
     return {
-      title: `Orden #${orderId.slice(-8)}`,
+      title: `Orden #${orderId}`,
       parent: 'Órdenes',
       parentLink: '/orders',
     };

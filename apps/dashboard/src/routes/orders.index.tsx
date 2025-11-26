@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useState } from 'react';
-import { ClipboardList, Eye, RefreshCw, Plus, Loader2 } from 'lucide-react';
+import { ClipboardList, Eye, RefreshCw, Plus, Loader2, MoreHorizontal, MessageCircle } from 'lucide-react';
+import { dispatchOpenChat } from '../components/FloatingChat';
 import { toast } from 'sonner';
 import { useOrders, useCreateOrder } from '../hooks';
 import {
@@ -30,6 +31,12 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '../components/ui/pagination';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../components/ui/dropdown-menu';
 
 export const Route = createFileRoute('/orders/')({
   component: OrdersPage,
@@ -220,7 +227,7 @@ function OrdersPage() {
                 return (
                   <TableRow key={order.id}>
                     <TableCell className="font-mono text-sm">
-                      {order.id.slice(-8)}
+                      {order.id}
                     </TableCell>
                     <TableCell className="font-medium">
                       {order.customerName || 'Sin nombre'}
@@ -240,14 +247,32 @@ function OrdersPage() {
                       })}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Link
-                        to="/orders/$orderId"
-                        params={{ orderId: order.id }}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-orange-600 hover:text-orange-700 hover:bg-orange-50 rounded-md transition-colors dark:text-orange-400 dark:hover:bg-orange-900/20"
-                      >
-                        <Eye className="h-4 w-4" />
-                        Ver
-                      </Link>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="inline-flex items-center justify-center p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem asChild>
+                            <Link
+                              to="/orders/$orderId"
+                              params={{ orderId: order.id }}
+                              className="flex items-center gap-2 cursor-pointer"
+                            >
+                              <Eye className="h-4 w-4" />
+                              Ver detalle
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => dispatchOpenChat(`Dame información de la orden ${order.id}`)}
+                            className="flex items-center gap-2 cursor-pointer"
+                          >
+                            <MessageCircle className="h-4 w-4" />
+                            Preguntar al AI
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 );

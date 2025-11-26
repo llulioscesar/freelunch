@@ -134,7 +134,7 @@ function OrderDetailPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-              Orden #{order.id.slice(-8)}
+              Orden #{order.id}
             </h1>
             <Badge variant={orderStatus.variant} className="flex items-center gap-1">
               <StatusIcon className={`h-3 w-3 ${orderStatus.icon === Loader2 ? 'animate-spin' : ''}`} />
@@ -165,13 +165,13 @@ function OrderDetailPage() {
       {/* Master-Detail Layout */}
       <div className="flex h-[calc(100vh-320px)] min-h-[400px] gap-4">
         {/* Left Side - Items List */}
-        <div className="w-full sm:w-72 lg:w-80 flex-shrink-0 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 flex flex-col">
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="w-full sm:w-72 lg:w-80 flex-shrink-0 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
             <h2 className="font-semibold text-gray-900 dark:text-white">
               Platos ({order.items.length})
             </h2>
           </div>
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1 min-h-0">
             <div>
               {order.items.map((item, index) => {
                 const status = statusConfig[item.status] || { label: item.status, variant: 'outline' as const, icon: Clock, color: 'gray' };
