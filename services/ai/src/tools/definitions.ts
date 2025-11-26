@@ -53,6 +53,56 @@ export const toolDefinitions: FunctionDeclaration[] = [
       required: [],
     },
   },
+  {
+    name: 'searchOrders',
+    description: 'Busca ordenes por nombre de cliente o estado. Usa esta herramienta para encontrar ordenes de un cliente especifico o listar ordenes por estado.',
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        customerName: {
+          type: SchemaType.STRING,
+          description: 'Nombre del cliente a buscar (busqueda parcial)',
+        },
+        status: {
+          type: SchemaType.STRING,
+          description: 'Estado de la orden: active, completed, failed, cancelled',
+        },
+        limit: {
+          type: SchemaType.NUMBER,
+          description: 'Cantidad maxima de resultados (default 10)',
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'getOrderDetails',
+    description: 'Obtiene los detalles completos de una orden por su ID, incluyendo items y progreso. Usa esta herramienta cuando necesites informacion detallada de una orden especifica.',
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        orderId: {
+          type: SchemaType.STRING,
+          description: 'ID de la orden (puede ser el ID completo o parcial)',
+        },
+      },
+      required: ['orderId'],
+    },
+  },
+  {
+    name: 'getOrderHistory',
+    description: 'Obtiene el historial de cambios de estado de una orden. Usa esta herramienta para ver la linea de tiempo de una orden.',
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        orderId: {
+          type: SchemaType.STRING,
+          description: 'ID de la orden',
+        },
+      },
+      required: ['orderId'],
+    },
+  },
 ];
 
 export interface CreateOrderParams {
@@ -64,6 +114,20 @@ export interface CreateOrderParams {
 export interface RequestPurchaseParams {
   ingredientName: string;
   quantity: number;
+}
+
+export interface SearchOrdersParams {
+  customerName?: string;
+  status?: string;
+  limit?: number;
+}
+
+export interface GetOrderDetailsParams {
+  orderId: string;
+}
+
+export interface GetOrderHistoryParams {
+  orderId: string;
 }
 
 export interface ToolResult {
