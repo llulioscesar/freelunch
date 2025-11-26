@@ -99,20 +99,22 @@ describe('KitchenRequestsConsumer', () => {
         },
       };
 
-      mockRedis.xreadgroup.mockResolvedValue([
-        [
-          'stream:warehouse:requests',
+      mockRedis.xreadgroup
+        .mockResolvedValueOnce(null) // No pending messages
+        .mockResolvedValueOnce([
           [
+            'stream:warehouse:requests',
             [
-              'message-id-1',
-              {
-                eventType: 'IngredientsRequested',
-                payload: JSON.stringify(payload),
-              },
+              [
+                'message-id-1',
+                {
+                  eventType: 'IngredientsRequested',
+                  payload: JSON.stringify(payload),
+                },
+              ],
             ],
           ],
-        ],
-      ]);
+        ]);
 
       mockUseCase.execute.mockResolvedValue({
         success: true,
@@ -151,20 +153,22 @@ describe('KitchenRequestsConsumer', () => {
         },
       };
 
-      mockRedis.xreadgroup.mockResolvedValue([
-        [
-          'stream:warehouse:requests',
+      mockRedis.xreadgroup
+        .mockResolvedValueOnce(null) // No pending messages
+        .mockResolvedValueOnce([
           [
+            'stream:warehouse:requests',
             [
-              'message-id-1',
-              {
-                eventType: 'IngredientsRequested',
-                payload: payload, // Object, not string!
-              },
+              [
+                'message-id-1',
+                {
+                  eventType: 'IngredientsRequested',
+                  payload: payload, // Object, not string!
+                },
+              ],
             ],
           ],
-        ],
-      ]);
+        ]);
 
       mockUseCase.execute.mockResolvedValue({
         success: true,
@@ -201,20 +205,22 @@ describe('KitchenRequestsConsumer', () => {
         },
       };
 
-      mockRedis.xreadgroup.mockResolvedValue([
-        [
-          'stream:warehouse:requests',
+      mockRedis.xreadgroup
+        .mockResolvedValueOnce(null) // No pending messages
+        .mockResolvedValueOnce([
           [
+            'stream:warehouse:requests',
             [
-              'message-id-1',
-              {
-                eventType: 'IngredientsRequested',
-                payload: JSON.stringify(payload),
-              },
+              [
+                'message-id-1',
+                {
+                  eventType: 'IngredientsRequested',
+                  payload: JSON.stringify(payload),
+                },
+              ],
             ],
           ],
-        ],
-      ]);
+        ]);
 
       mockUseCase.execute.mockResolvedValue({
         success: true,
@@ -239,24 +245,26 @@ describe('KitchenRequestsConsumer', () => {
     });
 
     it('should process messages with legacy flat format', async () => {
-      mockRedis.xreadgroup.mockResolvedValue([
-        [
-          'stream:warehouse:requests',
+      mockRedis.xreadgroup
+        .mockResolvedValueOnce(null) // No pending messages
+        .mockResolvedValueOnce([
           [
+            'stream:warehouse:requests',
             [
-              'message-id-1',
-              {
-                plateId: 'plate-123',
-                orderItemId: 'item-456',
-                recipeId: 'recipe-789',
-                recipeName: 'Test Recipe',
-                ingredients: JSON.stringify([{ name: 'cheese', quantity: 1 }]),
-                requestedAt: new Date().toISOString(),
-              },
+              [
+                'message-id-1',
+                {
+                  plateId: 'plate-123',
+                  orderItemId: 'item-456',
+                  recipeId: 'recipe-789',
+                  recipeName: 'Test Recipe',
+                  ingredients: JSON.stringify([{ name: 'cheese', quantity: 1 }]),
+                  requestedAt: new Date().toISOString(),
+                },
+              ],
             ],
           ],
-        ],
-      ]);
+        ]);
 
       mockUseCase.execute.mockResolvedValue({
         success: true,
@@ -291,20 +299,22 @@ describe('KitchenRequestsConsumer', () => {
         },
       };
 
-      mockRedis.xreadgroup.mockResolvedValue([
-        [
-          'stream:warehouse:requests',
+      mockRedis.xreadgroup
+        .mockResolvedValueOnce(null) // No pending messages
+        .mockResolvedValueOnce([
           [
+            'stream:warehouse:requests',
             [
-              'message-id-1',
-              {
-                eventType: 'IngredientsRequested',
-                payload: JSON.stringify(payload),
-              },
+              [
+                'message-id-1',
+                {
+                  eventType: 'IngredientsRequested',
+                  payload: JSON.stringify(payload),
+                },
+              ],
             ],
           ],
-        ],
-      ]);
+        ]);
 
       mockUseCase.execute.mockRejectedValue(new Error('Processing failed'));
 

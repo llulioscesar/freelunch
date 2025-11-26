@@ -73,6 +73,7 @@ export interface InventoryItem {
   id: string;
   ingredientName: string;
   quantity: number;
+  createdAt: string;
   updatedAt: string;
 }
 
@@ -108,9 +109,25 @@ export interface StatsResponse {
   stats: OrderStats;
 }
 
+export interface OrderListItem {
+  id: string;
+  status: string;
+  quantity: number;
+  customerName: string;
+  createdAt: string;
+}
+
+export interface Pagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
 export interface OrdersResponse {
   success: boolean;
-  orders: Order[];
+  data: OrderListItem[];
+  pagination: Pagination;
 }
 
 export interface RecipesResponse {
@@ -118,9 +135,15 @@ export interface RecipesResponse {
   recipes: Recipe[];
 }
 
+export interface InventoryData {
+  items: InventoryItem[];
+  totalItems: number;
+  lastUpdated: string;
+}
+
 export interface InventoryResponse {
   success: boolean;
-  data: InventoryItem[];
+  data: InventoryData;
 }
 
 export interface PurchasesResponse {
