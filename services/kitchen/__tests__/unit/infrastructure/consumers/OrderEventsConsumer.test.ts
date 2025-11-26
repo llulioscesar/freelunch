@@ -123,30 +123,32 @@ describe('OrderEventsConsumer', () => {
     });
 
     it('should process order.created events', async () => {
-      mockRedis.xreadgroup.mockResolvedValue([
-        [
-          'stream:orders:events',
+      mockRedis.xreadgroup
+        .mockResolvedValueOnce(null) // No pending messages
+        .mockResolvedValueOnce([
           [
+            'stream:orders:events',
             [
-              'msg-1',
-              {
-                eventType: 'order.created',
-                payload: JSON.stringify({
-                  data: {
-                    orderId: 'order-1',
-                    quantity: 2,
-                    customerName: 'Test Customer',
-                    items: [
-                      { itemId: 'item-1', orderId: 'order-1' },
-                      { itemId: 'item-2', orderId: 'order-1' },
-                    ],
-                  },
-                }),
-              },
+              [
+                'msg-1',
+                {
+                  eventType: 'order.created',
+                  payload: JSON.stringify({
+                    data: {
+                      orderId: 'order-1',
+                      quantity: 2,
+                      customerName: 'Test Customer',
+                      items: [
+                        { itemId: 'item-1', orderId: 'order-1' },
+                        { itemId: 'item-2', orderId: 'order-1' },
+                      ],
+                    },
+                  }),
+                },
+              ],
             ],
           ],
-        ],
-      ]);
+        ]);
       mockRedis.xack.mockResolvedValue(1);
 
       const count = await consumer.processBatch(10);
@@ -158,27 +160,29 @@ describe('OrderEventsConsumer', () => {
     });
 
     it('should handle payload as object', async () => {
-      mockRedis.xreadgroup.mockResolvedValue([
-        [
-          'stream:orders:events',
+      mockRedis.xreadgroup
+        .mockResolvedValueOnce(null) // No pending messages
+        .mockResolvedValueOnce([
           [
+            'stream:orders:events',
             [
-              'msg-1',
-              {
-                eventType: 'order.created',
-                payload: {
-                  data: {
-                    orderId: 'order-1',
-                    quantity: 1,
-                    customerName: 'Test',
-                    items: [{ itemId: 'item-1', orderId: 'order-1' }],
+              [
+                'msg-1',
+                {
+                  eventType: 'order.created',
+                  payload: {
+                    data: {
+                      orderId: 'order-1',
+                      quantity: 1,
+                      customerName: 'Test',
+                      items: [{ itemId: 'item-1', orderId: 'order-1' }],
+                    },
                   },
                 },
-              },
+              ],
             ],
           ],
-        ],
-      ]);
+        ]);
       mockRedis.xack.mockResolvedValue(1);
 
       const count = await consumer.processBatch(10);
@@ -187,29 +191,31 @@ describe('OrderEventsConsumer', () => {
     });
 
     it('should handle fields as array format', async () => {
-      mockRedis.xreadgroup.mockResolvedValue([
-        [
-          'stream:orders:events',
+      mockRedis.xreadgroup
+        .mockResolvedValueOnce(null) // No pending messages
+        .mockResolvedValueOnce([
           [
+            'stream:orders:events',
             [
-              'msg-1',
               [
-                'eventType',
-                'order.created',
-                'payload',
-                JSON.stringify({
-                  data: {
-                    orderId: 'order-1',
-                    quantity: 1,
-                    customerName: 'Test',
-                    items: [{ itemId: 'item-1', orderId: 'order-1' }],
-                  },
-                }),
+                'msg-1',
+                [
+                  'eventType',
+                  'order.created',
+                  'payload',
+                  JSON.stringify({
+                    data: {
+                      orderId: 'order-1',
+                      quantity: 1,
+                      customerName: 'Test',
+                      items: [{ itemId: 'item-1', orderId: 'order-1' }],
+                    },
+                  }),
+                ],
               ],
             ],
           ],
-        ],
-      ]);
+        ]);
       mockRedis.xack.mockResolvedValue(1);
 
       const count = await consumer.processBatch(10);
@@ -218,12 +224,14 @@ describe('OrderEventsConsumer', () => {
     });
 
     it('should handle unknown event types', async () => {
-      mockRedis.xreadgroup.mockResolvedValue([
-        [
-          'stream:orders:events',
-          [['msg-1', { eventType: 'unknown.event', payload: '{}' }]],
-        ],
-      ]);
+      mockRedis.xreadgroup
+        .mockResolvedValueOnce(null) // No pending messages
+        .mockResolvedValueOnce([
+          [
+            'stream:orders:events',
+            [['msg-1', { eventType: 'unknown.event', payload: '{}' }]],
+          ],
+        ]);
       mockRedis.xack.mockResolvedValue(1);
 
       const count = await consumer.processBatch(10);
@@ -233,27 +241,29 @@ describe('OrderEventsConsumer', () => {
     });
 
     it('should continue processing after individual message errors', async () => {
-      mockRedis.xreadgroup.mockResolvedValue([
-        [
-          'stream:orders:events',
+      mockRedis.xreadgroup
+        .mockResolvedValueOnce(null) // No pending messages
+        .mockResolvedValueOnce([
           [
+            'stream:orders:events',
             [
-              'msg-1',
-              {
-                eventType: 'order.created',
-                payload: JSON.stringify({
-                  data: {
-                    orderId: 'order-1',
-                    quantity: 1,
-                    customerName: 'Test',
-                    items: [{ itemId: 'item-1', orderId: 'order-1' }],
-                  },
-                }),
-              },
+              [
+                'msg-1',
+                {
+                  eventType: 'order.created',
+                  payload: JSON.stringify({
+                    data: {
+                      orderId: 'order-1',
+                      quantity: 1,
+                      customerName: 'Test',
+                      items: [{ itemId: 'item-1', orderId: 'order-1' }],
+                    },
+                  }),
+                },
+              ],
             ],
           ],
-        ],
-      ]);
+        ]);
       mockProcessOrderUseCase.execute.mockRejectedValue(new Error('DB Error'));
 
       await consumer.processBatch(10);

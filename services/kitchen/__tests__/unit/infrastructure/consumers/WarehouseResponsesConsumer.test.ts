@@ -139,28 +139,30 @@ describe('WarehouseResponsesConsumer', () => {
     });
 
     it('should process successful ingredient response with unified format', async () => {
-      mockRedis.xreadgroup.mockResolvedValue([
-        [
-          'stream:warehouse:responses',
+      mockRedis.xreadgroup
+        .mockResolvedValueOnce(null) // No pending messages
+        .mockResolvedValueOnce([
           [
+            'stream:warehouse:responses',
             [
-              'msg-1',
-              {
-                eventType: 'ingredients.ready',
-                payload: JSON.stringify({
-                  data: {
-                    plateId: 'plate-1',
-                    orderItemId: 'item-1',
-                    success: true,
-                    ingredients: { tomato: 2, cheese: 1 },
-                    processedAt: new Date().toISOString(),
-                  },
-                }),
-              },
+              [
+                'msg-1',
+                {
+                  eventType: 'ingredients.ready',
+                  payload: JSON.stringify({
+                    data: {
+                      plateId: 'plate-1',
+                      orderItemId: 'item-1',
+                      success: true,
+                      ingredients: { tomato: 2, cheese: 1 },
+                      processedAt: new Date().toISOString(),
+                    },
+                  }),
+                },
+              ],
             ],
           ],
-        ],
-      ]);
+        ]);
       mockRedis.xack.mockResolvedValue(1);
 
       const count = await consumer.processBatch(10);
@@ -173,28 +175,30 @@ describe('WarehouseResponsesConsumer', () => {
     });
 
     it('should handle payload as already parsed object', async () => {
-      mockRedis.xreadgroup.mockResolvedValue([
-        [
-          'stream:warehouse:responses',
+      mockRedis.xreadgroup
+        .mockResolvedValueOnce(null) // No pending messages
+        .mockResolvedValueOnce([
           [
+            'stream:warehouse:responses',
             [
-              'msg-1',
-              {
-                eventType: 'ingredients.ready',
-                payload: {
-                  data: {
-                    plateId: 'plate-1',
-                    orderItemId: 'item-1',
-                    success: true,
-                    ingredients: { tomato: 2 },
-                    processedAt: new Date().toISOString(),
+              [
+                'msg-1',
+                {
+                  eventType: 'ingredients.ready',
+                  payload: {
+                    data: {
+                      plateId: 'plate-1',
+                      orderItemId: 'item-1',
+                      success: true,
+                      ingredients: { tomato: 2 },
+                      processedAt: new Date().toISOString(),
+                    },
                   },
                 },
-              },
+              ],
             ],
           ],
-        ],
-      ]);
+        ]);
       mockRedis.xack.mockResolvedValue(1);
 
       const count = await consumer.processBatch(10);
@@ -203,30 +207,32 @@ describe('WarehouseResponsesConsumer', () => {
     });
 
     it('should process unavailable ingredients response', async () => {
-      mockRedis.xreadgroup.mockResolvedValue([
-        [
-          'stream:warehouse:responses',
+      mockRedis.xreadgroup
+        .mockResolvedValueOnce(null) // No pending messages
+        .mockResolvedValueOnce([
           [
+            'stream:warehouse:responses',
             [
-              'msg-1',
-              {
-                eventType: 'ingredients.unavailable',
-                payload: JSON.stringify({
-                  data: {
-                    plateId: 'plate-1',
-                    orderItemId: 'item-1',
-                    success: false,
-                    ingredients: { tomato: 2 },
-                    unavailableIngredients: ['tomato'],
-                    message: 'Tomato out of stock',
-                    processedAt: new Date().toISOString(),
-                  },
-                }),
-              },
+              [
+                'msg-1',
+                {
+                  eventType: 'ingredients.unavailable',
+                  payload: JSON.stringify({
+                    data: {
+                      plateId: 'plate-1',
+                      orderItemId: 'item-1',
+                      success: false,
+                      ingredients: { tomato: 2 },
+                      unavailableIngredients: ['tomato'],
+                      message: 'Tomato out of stock',
+                      processedAt: new Date().toISOString(),
+                    },
+                  }),
+                },
+              ],
             ],
           ],
-        ],
-      ]);
+        ]);
       mockRedis.xack.mockResolvedValue(1);
 
       const count = await consumer.processBatch(10);
@@ -237,23 +243,25 @@ describe('WarehouseResponsesConsumer', () => {
     });
 
     it('should handle legacy flat format', async () => {
-      mockRedis.xreadgroup.mockResolvedValue([
-        [
-          'stream:warehouse:responses',
+      mockRedis.xreadgroup
+        .mockResolvedValueOnce(null) // No pending messages
+        .mockResolvedValueOnce([
           [
+            'stream:warehouse:responses',
             [
-              'msg-1',
-              {
-                plateId: 'plate-1',
-                orderItemId: 'item-1',
-                success: 'true',
-                ingredients: '{"tomato": 2}',
-                processedAt: new Date().toISOString(),
-              },
+              [
+                'msg-1',
+                {
+                  plateId: 'plate-1',
+                  orderItemId: 'item-1',
+                  success: 'true',
+                  ingredients: '{"tomato": 2}',
+                  processedAt: new Date().toISOString(),
+                },
+              ],
             ],
           ],
-        ],
-      ]);
+        ]);
       mockRedis.xack.mockResolvedValue(1);
 
       const count = await consumer.processBatch(10);
@@ -263,28 +271,30 @@ describe('WarehouseResponsesConsumer', () => {
     });
 
     it('should handle fields as array format', async () => {
-      mockRedis.xreadgroup.mockResolvedValue([
-        [
-          'stream:warehouse:responses',
+      mockRedis.xreadgroup
+        .mockResolvedValueOnce(null) // No pending messages
+        .mockResolvedValueOnce([
           [
+            'stream:warehouse:responses',
             [
-              'msg-1',
               [
-                'plateId',
-                'plate-1',
-                'orderItemId',
-                'item-1',
-                'success',
-                'true',
-                'ingredients',
-                '{"tomato": 2}',
-                'processedAt',
-                new Date().toISOString(),
+                'msg-1',
+                [
+                  'plateId',
+                  'plate-1',
+                  'orderItemId',
+                  'item-1',
+                  'success',
+                  'true',
+                  'ingredients',
+                  '{"tomato": 2}',
+                  'processedAt',
+                  new Date().toISOString(),
+                ],
               ],
             ],
           ],
-        ],
-      ]);
+        ]);
       mockRedis.xack.mockResolvedValue(1);
 
       const count = await consumer.processBatch(10);
@@ -294,27 +304,29 @@ describe('WarehouseResponsesConsumer', () => {
 
     it('should handle plate not found', async () => {
       mockPlateRepository.findById.mockResolvedValue(null);
-      mockRedis.xreadgroup.mockResolvedValue([
-        [
-          'stream:warehouse:responses',
+      mockRedis.xreadgroup
+        .mockResolvedValueOnce(null) // No pending messages
+        .mockResolvedValueOnce([
           [
+            'stream:warehouse:responses',
             [
-              'msg-1',
-              {
-                payload: JSON.stringify({
-                  data: {
-                    plateId: 'non-existent',
-                    orderItemId: 'item-1',
-                    success: true,
-                    ingredients: {},
-                    processedAt: new Date().toISOString(),
-                  },
-                }),
-              },
+              [
+                'msg-1',
+                {
+                  payload: JSON.stringify({
+                    data: {
+                      plateId: 'non-existent',
+                      orderItemId: 'item-1',
+                      success: true,
+                      ingredients: {},
+                      processedAt: new Date().toISOString(),
+                    },
+                  }),
+                },
+              ],
             ],
           ],
-        ],
-      ]);
+        ]);
       mockRedis.xack.mockResolvedValue(1);
 
       const count = await consumer.processBatch(10);
@@ -324,27 +336,29 @@ describe('WarehouseResponsesConsumer', () => {
     });
 
     it('should handle processing errors', async () => {
-      mockRedis.xreadgroup.mockResolvedValue([
-        [
-          'stream:warehouse:responses',
+      mockRedis.xreadgroup
+        .mockResolvedValueOnce(null) // No pending messages
+        .mockResolvedValueOnce([
           [
+            'stream:warehouse:responses',
             [
-              'msg-1',
-              {
-                payload: JSON.stringify({
-                  data: {
-                    plateId: 'plate-1',
-                    orderItemId: 'item-1',
-                    success: true,
-                    ingredients: {},
-                    processedAt: new Date().toISOString(),
-                  },
-                }),
-              },
+              [
+                'msg-1',
+                {
+                  payload: JSON.stringify({
+                    data: {
+                      plateId: 'plate-1',
+                      orderItemId: 'item-1',
+                      success: true,
+                      ingredients: {},
+                      processedAt: new Date().toISOString(),
+                    },
+                  }),
+                },
+              ],
             ],
           ],
-        ],
-      ]);
+        ]);
       mockPlateRepository.save.mockRejectedValue(new Error('DB Error'));
 
       await consumer.processBatch(10);
@@ -365,27 +379,29 @@ describe('WarehouseResponsesConsumer', () => {
       const mockEvent = { eventName: 'plate.ready' };
       mockPlate.getDomainEvents.mockReturnValue([mockEvent]);
 
-      mockRedis.xreadgroup.mockResolvedValue([
-        [
-          'stream:warehouse:responses',
+      mockRedis.xreadgroup
+        .mockResolvedValueOnce(null) // No pending messages
+        .mockResolvedValueOnce([
           [
+            'stream:warehouse:responses',
             [
-              'msg-1',
-              {
-                payload: JSON.stringify({
-                  data: {
-                    plateId: 'plate-1',
-                    orderItemId: 'item-1',
-                    success: true,
-                    ingredients: {},
-                    processedAt: new Date().toISOString(),
-                  },
-                }),
-              },
+              [
+                'msg-1',
+                {
+                  payload: JSON.stringify({
+                    data: {
+                      plateId: 'plate-1',
+                      orderItemId: 'item-1',
+                      success: true,
+                      ingredients: {},
+                      processedAt: new Date().toISOString(),
+                    },
+                  }),
+                },
+              ],
             ],
           ],
-        ],
-      ]);
+        ]);
       mockRedis.xack.mockResolvedValue(1);
 
       await consumer.processBatch(10);
@@ -395,27 +411,29 @@ describe('WarehouseResponsesConsumer', () => {
     });
 
     it('should handle unavailable ingredients without message', async () => {
-      mockRedis.xreadgroup.mockResolvedValue([
-        [
-          'stream:warehouse:responses',
+      mockRedis.xreadgroup
+        .mockResolvedValueOnce(null) // No pending messages
+        .mockResolvedValueOnce([
           [
+            'stream:warehouse:responses',
             [
-              'msg-1',
-              {
-                payload: JSON.stringify({
-                  data: {
-                    plateId: 'plate-1',
-                    orderItemId: 'item-1',
-                    success: false,
-                    ingredients: {},
-                    processedAt: new Date().toISOString(),
-                  },
-                }),
-              },
+              [
+                'msg-1',
+                {
+                  payload: JSON.stringify({
+                    data: {
+                      plateId: 'plate-1',
+                      orderItemId: 'item-1',
+                      success: false,
+                      ingredients: {},
+                      processedAt: new Date().toISOString(),
+                    },
+                  }),
+                },
+              ],
             ],
           ],
-        ],
-      ]);
+        ]);
       mockRedis.xack.mockResolvedValue(1);
 
       await consumer.processBatch(10);
