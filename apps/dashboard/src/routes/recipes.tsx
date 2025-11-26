@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { UtensilsCrossed, RefreshCw, ChefHat } from 'lucide-react';
 import { useRecipes } from '../hooks';
 import { Skeleton } from '../components/ui/skeleton';
@@ -18,12 +18,8 @@ function RecipesPage() {
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [mobileSelectedRecipe, setMobileSelectedRecipe] = useState<Recipe | null>(null);
 
-  // Auto-select first recipe when data loads
-  useEffect(() => {
-    if (recipes.length > 0 && !selectedRecipe) {
-      setSelectedRecipe(recipes[0]);
-    }
-  }, [recipes, selectedRecipe]);
+  // Compute effective selected recipe (user selection or first recipe)
+  const effectiveSelectedRecipe = selectedRecipe ?? recipes[0] ?? null;
 
   return (
     <div className="space-y-4">
@@ -79,7 +75,7 @@ function RecipesPage() {
               <div>
                 {recipes.map((recipe) => {
                   const ingredientCount = Object.keys(recipe.ingredients).length;
-                  const isSelected = selectedRecipe?.id === recipe.id;
+                  const isSelected = effectiveSelectedRecipe?.id === recipe.id;
 
                   return (
                     <button
@@ -116,9 +112,9 @@ function RecipesPage() {
           </div>
 
           {/* Right Side - Recipe Detail */}
-          {selectedRecipe ? (
+          {effectiveSelectedRecipe ? (
             <RecipeDetail
-              recipe={selectedRecipe}
+              recipe={effectiveSelectedRecipe}
               mobileSelected={mobileSelectedRecipe !== null}
               onBack={() => setMobileSelectedRecipe(null)}
             />

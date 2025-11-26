@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   ArrowLeft,
   Clock,
@@ -84,12 +84,8 @@ function OrderDetailPage() {
   const order = data?.order;
   const history = historyData?.history ?? [];
 
-  // Auto-select first item when order loads
-  useEffect(() => {
-    if (order?.items?.length && !selectedItem) {
-      setSelectedItem(order.items[0]);
-    }
-  }, [order, selectedItem]);
+  // Compute effective selected item (user selection or first item)
+  const effectiveSelectedItem = selectedItem ?? order?.items?.[0] ?? null;
 
   // Group history by item and sort by date
   const historyByItem = history.reduce((acc, entry) => {
@@ -127,7 +123,7 @@ function OrderDetailPage() {
 
   const orderStatus = statusConfig[order.status] || { label: order.status, variant: 'outline' as const, icon: Clock, color: 'gray' };
   const StatusIcon = orderStatus.icon;
-  const currentItemHistory = selectedItem ? historyByItem[selectedItem.id] || [] : [];
+  const currentItemHistory = effectiveSelectedItem ? historyByItem[effectiveSelectedItem.id] || [] : [];
 
   return (
     <div className="space-y-4">
@@ -180,7 +176,7 @@ function OrderDetailPage() {
               {order.items.map((item, index) => {
                 const status = statusConfig[item.status] || { label: item.status, variant: 'outline' as const, icon: Clock, color: 'gray' };
                 const ItemIcon = status.icon;
-                const isSelected = selectedItem?.id === item.id;
+                const isSelected = effectiveSelectedItem?.id === item.id;
 
                 return (
                   <button
@@ -218,7 +214,7 @@ function OrderDetailPage() {
         </div>
 
         {/* Right Side - Item Detail */}
-        {selectedItem ? (
+        {effectiveSelectedItem ? (
           <div
             className={cn(
               'flex-1 min-h-0 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden',
@@ -239,14 +235,14 @@ function OrderDetailPage() {
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <h3 className="font-semibold text-gray-900 dark:text-white">
-                      {selectedItem.recipeName || 'Plato sin asignar'}
+                      {effectiveSelectedItem.recipeName || 'Plato sin asignar'}
                     </h3>
-                    <Badge variant={statusConfig[selectedItem.status]?.variant || 'outline'}>
-                      {statusConfig[selectedItem.status]?.label || selectedItem.status}
+                    <Badge variant={statusConfig[effectiveSelectedItem.status]?.variant || 'outline'}>
+                      {statusConfig[effectiveSelectedItem.status]?.label || effectiveSelectedItem.status}
                     </Badge>
                   </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 font-mono mt-1">
-                    {selectedItem.id}
+                    {effectiveSelectedItem.id}
                   </p>
                 </div>
                 {/* Total Time */}

@@ -17,8 +17,10 @@ describe('GetPurchaseHistoryUseCase', () => {
       findByIngredientName: jest.fn(),
       findByPlateId: jest.fn(),
       findRecent: jest.fn(),
+      findPaginated: jest.fn(),
       save: jest.fn(),
       countByStatus: jest.fn(),
+      getStats: jest.fn(),
       getTotalPurchasedByIngredient: jest.fn(),
     };
 
@@ -26,7 +28,8 @@ describe('GetPurchaseHistoryUseCase', () => {
   });
 
   it('should return empty history when no purchases exist', async () => {
-    mockPurchaseRepository.findRecent.mockResolvedValue([]);
+    mockPurchaseRepository.findPaginated.mockResolvedValue({ purchases: [], total: 0 });
+    mockPurchaseRepository.getStats.mockResolvedValue({ total: 0, successful: 0, failed: 0 });
 
     const result = await useCase.execute();
 
@@ -36,20 +39,22 @@ describe('GetPurchaseHistoryUseCase', () => {
     expect(result.failed).toBe(0);
   });
 
-  it('should use default limit of 100', async () => {
-    mockPurchaseRepository.findRecent.mockResolvedValue([]);
+  it('should use default page and limit', async () => {
+    mockPurchaseRepository.findPaginated.mockResolvedValue({ purchases: [], total: 0 });
+    mockPurchaseRepository.getStats.mockResolvedValue({ total: 0, successful: 0, failed: 0 });
 
     await useCase.execute();
 
-    expect(mockPurchaseRepository.findRecent).toHaveBeenCalledWith(100);
+    expect(mockPurchaseRepository.findPaginated).toHaveBeenCalledWith(1, 10);
   });
 
-  it('should use custom limit when provided', async () => {
-    mockPurchaseRepository.findRecent.mockResolvedValue([]);
+  it('should use custom page and limit when provided', async () => {
+    mockPurchaseRepository.findPaginated.mockResolvedValue({ purchases: [], total: 0 });
+    mockPurchaseRepository.getStats.mockResolvedValue({ total: 0, successful: 0, failed: 0 });
 
-    await useCase.execute({ limit: 50 });
+    await useCase.execute({ page: 2, limit: 50 });
 
-    expect(mockPurchaseRepository.findRecent).toHaveBeenCalledWith(50);
+    expect(mockPurchaseRepository.findPaginated).toHaveBeenCalledWith(2, 50);
   });
 
   it('should return purchase DTOs with correct data', async () => {
@@ -66,7 +71,8 @@ describe('GetPurchaseHistoryUseCase', () => {
       new Date('2024-01-01T00:01:00.000Z')
     );
 
-    mockPurchaseRepository.findRecent.mockResolvedValue([purchase]);
+    mockPurchaseRepository.findPaginated.mockResolvedValue({ purchases: [purchase], total: 1 });
+    mockPurchaseRepository.getStats.mockResolvedValue({ total: 1, successful: 1, failed: 0 });
 
     const result = await useCase.execute();
 
@@ -81,7 +87,7 @@ describe('GetPurchaseHistoryUseCase', () => {
     });
   });
 
-  it('should count successful and failed purchases correctly', async () => {
+  it('should return stats from repository', async () => {
     const successfulPurchase = new Purchase(
       new PurchaseId('purchase-1'),
       new IngredientName('tomato'),
@@ -107,11 +113,11 @@ describe('GetPurchaseHistoryUseCase', () => {
       new Quantity(1)
     );
 
-    mockPurchaseRepository.findRecent.mockResolvedValue([
-      successfulPurchase,
-      failedPurchase,
-      pendingPurchase,
-    ]);
+    mockPurchaseRepository.findPaginated.mockResolvedValue({
+      purchases: [successfulPurchase, failedPurchase, pendingPurchase],
+      total: 3,
+    });
+    mockPurchaseRepository.getStats.mockResolvedValue({ total: 3, successful: 1, failed: 1 });
 
     const result = await useCase.execute();
 
@@ -127,10 +133,24 @@ describe('GetPurchaseHistoryUseCase', () => {
       new Quantity(5)
     );
 
-    mockPurchaseRepository.findRecent.mockResolvedValue([purchase]);
+    mockPurchaseRepository.findPaginated.mockResolvedValue({ purchases: [purchase], total: 1 });
+    mockPurchaseRepository.getStats.mockResolvedValue({ total: 1, successful: 0, failed: 1 });
 
     const result = await useCase.execute();
 
     expect(result.purchases[0].completedAt).toBeNull();
+  });
+
+  it('should return pagination info', async () => {
+    mockPurchaseRepository.findPaginated.mockResolvedValue({ purchases: [], total: 25 });
+    mockPurchaseRepository.getStats.mockResolvedValue({ total: 25, successful: 20, failed: 5 });
+
+    const result = await useCase.execute({ page: 2, limit: 10 });
+
+    expect(result.pagination).toEqual({
+      page: 2,
+      limit: 10,
+      totalPages: 3,
+    });
   });
 });

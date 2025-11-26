@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useState, useEffect } from 'react';
-import { ShoppingCart, RefreshCw, CheckCircle, XCircle, Clock, Package, AlertTriangle } from 'lucide-react';
+import { ShoppingCart, RefreshCw, CheckCircle, XCircle, Clock, Package } from 'lucide-react';
 import { usePurchases } from '../hooks';
 import {
   Table,
@@ -57,7 +57,6 @@ function PurchasesPage() {
     failed: purchaseData?.failed ?? 0,
   };
 
-  const totalItems = pagination?.totalPages ? stats.total : purchases.length;
   const totalPages = pagination?.totalPages ?? 1;
 
   const handlePrevious = () => {
