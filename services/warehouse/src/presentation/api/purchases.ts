@@ -5,6 +5,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { GetPurchaseHistoryUseCase } from '../../application/use-cases/GetPurchaseHistoryUseCase.js';
 import { PrismaPurchaseRepository } from '../../infrastructure/adapters/persistence/PrismaPurchaseRepository.js';
+import { withCors } from '../../infrastructure/http/cors.js';
 import { logger } from '../../infrastructure/logging/Logger.js';
 
 let purchaseRepository: PrismaPurchaseRepository | null = null;
@@ -20,7 +21,7 @@ function getUseCase() {
   return getPurchaseHistoryUseCase;
 }
 
-export default async function handler(
+async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
@@ -53,3 +54,5 @@ export default async function handler(
     });
   }
 }
+
+export default withCors(handler);
