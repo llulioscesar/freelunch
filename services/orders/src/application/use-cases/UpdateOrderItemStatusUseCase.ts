@@ -308,6 +308,14 @@ export class UpdateOrderItemStatusUseCase {
 
     // All items delivered → Order DELIVERED
     if (order.areAllItemsDelivered() && currentStatus !== 'DELIVERED') {
+      // State machine requires PREPARING → READY → DELIVERED
+      // So if we're in PREPARING, transition through READY first
+      if (currentStatus === 'PREPARING') {
+        order.markAsReady();
+        logger.info('Order marked as ready (transitioning to delivered)', {
+          orderId: order.getId().getValue(),
+        });
+      }
       order.markAsDelivered();
       logger.info('Order marked as delivered (all items delivered)', {
         orderId: order.getId().getValue(),
