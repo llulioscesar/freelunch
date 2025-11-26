@@ -1,262 +1,156 @@
-# 🍳 Kitchen Service
+# Kitchen Service
 
-Servicio de cocina para FreeLunch - Gestiona la asignación de recetas y preparación de platos.
+Servicio de cocina para FreeLunch - Gestiona la asignacion de recetas y preparacion de platos.
 
-## 🏗️ Arquitectura
+## Descripcion
 
-Este servicio sigue **Arquitectura Hexagonal (Puertos y Adaptadores)** con **Domain-Driven Design (DDD)**:
+- Recibe eventos de ordenes desde Orders Service
+- Crea platos (Plates) para cada item de la orden
+- Asigna recetas aleatorias a cada plato
+- Solicita ingredientes a Warehouse Service
+- Procesa respuestas de disponibilidad de ingredientes
+- Emite eventos de progreso de preparacion
+
+## API Endpoints
+
+```http
+GET  /api                              # Health check
+GET  /api/recipes                      # Lista de recetas disponibles
+GET  /api/plates                       # Platos en preparacion
+GET  /api/history?plateId=PLT-xxx      # Historial de un plato
+GET  /api/stats                        # Estadisticas de cocina
+GET  /api/metrics                      # Metricas (JSON o Prometheus)
+POST /api/workers/order-consumer       # Worker cron - consume ordenes
+POST /api/workers/warehouse-consumer   # Worker cron - consume respuestas warehouse
+```
+
+## Arquitectura
 
 ```
-kitchen/
-├── domain/           # Lógica de negocio pura
-│   ├── entities/     # Recipe, Plate
-│   ├── value-objects/# PlateStatus, Ingredients, etc.
-│   ├── events/       # Eventos de dominio
-│   └── repositories/ # Interfaces (puertos)
+src/
+├── domain/                 # Nucleo del negocio
+│   ├── entities/           # Recipe, Plate
+│   ├── value-objects/      # PlateId, PlateStatus, RecipeId, Ingredients
+│   ├── events/             # PlateAssigned, IngredientsRequested, PlateReady, PlateFailed
+│   └── repositories/       # Interfaces
 │
-├── application/      # Casos de uso
-│   ├── use-cases/    # ProcessOrderUseCase, AssignRecipeUseCase, etc.
-│   ├── dto/          # Data Transfer Objects
-│   └── ports/        # EventPublisher, WarehouseClient
+├── application/            # Casos de uso
+│   ├── use-cases/          # ProcessOrder, AssignRecipe, RequestIngredients
+│   ├── dto/                # PlateDTO, RecipeDTO, ProcessOrderDTO
+│   └── ports/              # EventPublisher, WarehouseClient
 │
-├── infrastructure/   # Implementaciones (adaptadores)
+├── infrastructure/         # Adaptadores
 │   ├── adapters/
-│   │   ├── persistence/  # Prisma repositories
-│   │   ├── messaging/    # Redis Streams
-│   │   └── cache/        # Redis client
-│   ├── consumers/    # Consumidores de eventos
-│   ├── config/       # Dependency Injection
-│   ├── logging/      # Logger
-│   └── metrics/      # MetricsService (Prometheus-style)
+│   │   ├── persistence/    # PrismaPlateRepository, PrismaRecipeRepository
+│   │   ├── messaging/      # RedisStreamEventPublisher, RedisWarehouseClient
+│   │   └── cache/          # RedisClient
+│   ├── consumers/          # OrderEventsConsumer, WarehouseResponsesConsumer
+│   └── config/             # Dependencies (DI)
 │
-└── presentation/     # API REST
-    └── api/          # Endpoints serverless
+└── presentation/           # API handlers
+    └── api/
 ```
 
-## 🚀 Tecnologías
-
-- **Node.js 20+** con ES Modules
-- **TypeScript 5.7+**
-- **Prisma ORM v7** con PostgreSQL Adapter
-- **Upstash Redis** (Redis Streams)
-- **Vercel Serverless Functions**
-- **Jest** para testing
-
-## 📦 Instalación
-
-```bash
-npm install
-```
-
-## ⚙️ Configuración
-
-Copia `.env.example` a `.env` y configura las variables:
-
-```bash
-cp .env.example .env
-```
-
-Variables requeridas:
-- `DATABASE_URL`: PostgreSQL connection string
-- `UPSTASH_REDIS_REST_URL`: Upstash Redis URL
-- `UPSTASH_REDIS_REST_TOKEN`: Upstash Redis token
-
-## 🗄️ Base de Datos (Prisma v7)
-
-### Generar Prisma Client
-
-```bash
-npm run prisma:generate
-```
-
-### Crear migración
-
-```bash
-npm run prisma:migrate
-```
-
-### Deploy migraciones (producción)
-
-```bash
-npm run prisma:deploy
-```
-
-### Abrir Prisma Studio
-
-```bash
-npm run prisma:studio
-```
-
-## 🔧 Desarrollo
-
-```bash
-# Modo watch
-npm run dev
-
-# Build
-npm run build
-
-# Type checking
-npm run typecheck
-
-# Linting
-npm run lint
-npm run lint:fix
-```
-
-## 🧪 Testing
-
-```bash
-# Todos los tests con coverage
-npm test
-
-# Solo tests unitarios
-npm run test:unit
-
-# Solo tests de integración
-npm run test:integration
-
-# Solo tests e2e
-npm run test:e2e
-
-# Watch mode
-npm run test:watch
-```
-
-## 📡 API Endpoints
+## Estados del Plato
 
 ```
-GET  /                  # Health check
-GET  /api/recipes       # Lista de recetas disponibles
-GET  /api/plates        # Platos en preparación
-GET  /api/metrics       # Métricas del servicio (JSON o Prometheus)
-POST /api/workers/order-consumer      # Worker para consumir eventos de Orders
-POST /api/workers/warehouse-consumer  # Worker para consumir respuestas de Warehouse
+PENDING → ASSIGNED → REQUESTING_INGREDIENTS → COOKING → READY
+    ↓         ↓              ↓                   ↓
+ FAILED    FAILED         FAILED              FAILED
 ```
 
-### Métricas
+## Eventos
 
-El endpoint `/api/metrics` retorna métricas en dos formatos:
+### Eventos Emitidos
 
-**Prometheus (default):**
-```bash
-curl https://kitchen.vercel.app/api/metrics
-```
+| Stream | Evento | Datos | Descripcion |
+|--------|--------|-------|-------------|
+| `stream:kitchen:events` | `kitchen.plate.assigned` | plateId, orderId, recipeId, ingredients | Receta asignada |
+| `stream:warehouse:requests` | `kitchen.ingredients.requested` | plateId, orderId, recipeId, ingredients | Solicitud de ingredientes |
+| `stream:kitchen:events` | `kitchen.plate.cooking` | plateId, cookingStartedAt | Inicio de coccion |
+| `stream:kitchen:events` | `kitchen.plate.ready` | plateId, readyAt, preparationTimeSeconds | Plato listo |
+| `stream:kitchen:events` | `kitchen.plate.failed` | plateId, reason | Plato fallido |
 
-**JSON:**
-```bash
-curl https://kitchen.vercel.app/api/metrics?format=json
-```
+### Eventos Consumidos
 
-**Métricas disponibles:**
-- HTTP requests (total, duration, status codes)
-- Database queries (total, duration, errors)
-- Event publishing/consumption (total, duration, errors)
-- Use case executions (total, duration, success/failure)
-- Business metrics:
-  - Plates created, assigned, ready, failed
-  - Recipes usage by recipe
-  - Cooking time by recipe
-  - Ingredients requests (available/unavailable)
+| Stream | Evento | Accion |
+|--------|--------|--------|
+| `stream:orders:events` | `order.created` | Crear plates, asignar recetas, solicitar ingredientes |
+| `stream:warehouse:responses` | `ingredients.reserved` | Iniciar coccion → Marcar como listo |
+| `stream:warehouse:responses` | `ingredients.unavailable` | Marcar plato como fallido |
 
-## 🔄 Flujo de Eventos
+## Consumer Workers
 
-1. **Orders** publica `OrderCreated` → Redis Stream `orders:events`
-2. **Kitchen** consume evento vía `OrderEventsConsumer`
-3. Kitchen crea `Plate` entities (uno por orderItem)
-4. Kitchen asigna receta aleatoria
-5. Kitchen solicita ingredientes a **Warehouse**
-6. Kitchen publica `PlateReady` → Redis Stream `kitchen:events`
-7. **Orders** consume `PlateReady` y actualiza estado
+### Order Consumer
+- **Stream**: `stream:orders:events`
+- **Consumer Group**: `kitchen-service`
+- **Endpoint**: `POST /api/workers/order-consumer`
 
-## 📚 Recetas Disponibles
+### Warehouse Consumer
+- **Stream**: `stream:warehouse:responses`
+- **Consumer Group**: `kitchen-service`
+- **Endpoint**: `POST /api/workers/warehouse-consumer`
 
-El servicio gestiona **6 recetas** con ingredientes del pool:
-- tomato, lemon, potato, rice, ketchup
-- lettuce, onion, cheese, meat, chicken
-
-## 🚢 Despliegue en Vercel
-
-```bash
-vercel
-```
-
-El servicio se despliega automáticamente con:
-- Prisma migrations via `buildCommand`
-- Serverless functions en `/api/*`
-- Variables de entorno configuradas en Vercel
-
-## 📝 Prisma ORM v7 - Cambios Importantes
-
-Este proyecto usa **Prisma ORM v7** con las siguientes configuraciones:
-
-### ESM (ES Modules)
-- `package.json` incluye `"type": "module"`
-- `tsconfig.json` configurado con `module: "ESNext"`
-
-### Nuevo Provider
-```prisma
-generator client {
-  provider = "prisma-client"  // Nuevo en v7
+Configurar crons en Vercel:
+```json
+{
+  "crons": [
+    { "path": "/api/workers/order-consumer", "schedule": "* * * * *" },
+    { "path": "/api/workers/warehouse-consumer", "schedule": "* * * * *" }
+  ]
 }
 ```
 
-### Configuración en `prisma.config.ts`
-```typescript
-import 'dotenv/config';
-import { defineConfig, env } from 'prisma/config';
+## Variables de Entorno
 
-export default defineConfig({
-  schema: 'prisma/schema.prisma',
-  datasource: {
-    url: env('DATABASE_URL'),
-  },
-});
+### Requeridas
+```env
+DATABASE_URL=postgresql://...              # Neon PostgreSQL
+UPSTASH_REDIS_REST_URL=https://...         # Upstash Redis REST URL
+UPSTASH_REDIS_REST_TOKEN=your_token        # Upstash Redis REST Token
 ```
 
-### PostgreSQL Adapter
-```typescript
-import { PrismaClient } from './src/generated/prisma/client/client.js';
-import { PrismaPg } from '@prisma/adapter-pg';
-import pg from 'pg';
-
-const pool = new pg.Pool({
-  connectionString: process.env.DATABASE_URL,
-});
-
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
+### Opcionales (tienen defaults)
+```env
+ORDERS_EVENTS_STREAM=stream:orders:events
+KITCHEN_EVENTS_STREAM=stream:kitchen:events
+KITCHEN_CONSUMER_GROUP=kitchen-service
+WAREHOUSE_REQUESTS_STREAM=stream:warehouse:requests
+WAREHOUSE_RESPONSES_STREAM=stream:warehouse:responses
+NODE_ENV=development
+LOG_LEVEL=info
 ```
 
-**Importante**: El cliente de Prisma se genera en `src/generated/prisma/client/client.js`
-
-### Primera vez - Setup completo
+## Desarrollo
 
 ```bash
-# 1. Instalar dependencias
+# Instalar dependencias
 npm install
 
-# 2. Configurar variables de entorno
-cp .env.example .env
-# Edita .env con tus credenciales
-
-# 3. Generar Prisma Client
+# Generar cliente Prisma
 npm run prisma:generate
 
-# 4. Ejecutar migraciones
-npm run prisma:migrate
+# Desarrollo local (puerto 3003)
+npm run dev
 
-# 5. Verificar tipos
-npm run typecheck
-
-# 6. Ejecutar tests
+# Tests
 npm test
+npm run test:coverage
+
+# Lint y tipos
+npm run lint
+npm run typecheck
 ```
 
-## 🤝 Contribuir
+## Recetas Disponibles
 
-Este servicio es parte del sistema FreeLunch. Ver el README principal del monorepo para guías de contribución.
+El servicio gestiona 6 recetas con ingredientes del pool:
+- tomato, lemon, potato, rice, ketchup
+- lettuce, onion, cheese, meat, chicken
 
-## 📄 Licencia
+## Stack
 
-MIT © StartCodex
+- Vercel Serverless Functions
+- PostgreSQL (Neon) + Prisma
+- Redis Streams (Upstash)
+- TypeScript

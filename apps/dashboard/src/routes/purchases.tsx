@@ -224,7 +224,7 @@ function PurchasesPage() {
                       })}
                     </TableCell>
                     <TableCell className="font-mono text-sm text-gray-500 dark:text-gray-400">
-                      {purchase.orderId ? purchase.orderId.slice(-8) : '-'}
+                      {purchase.orderId ?? '-'}
                     </TableCell>
                   </TableRow>
                 );

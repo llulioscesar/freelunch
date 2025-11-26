@@ -1,197 +1,115 @@
-# 📦 Warehouse Service
+# Warehouse Service
 
 Servicio de bodega para FreeLunch - Gestiona el inventario de ingredientes y compras en la plaza de mercado.
 
-## 🏗️ Arquitectura
+## Descripcion
 
-Este servicio sigue **Arquitectura Hexagonal (Puertos y Adaptadores)** con **Domain-Driven Design (DDD)**:
+- Recibe solicitudes de ingredientes desde Kitchen Service
+- Verifica disponibilidad en inventario
+- Compra automaticamente en Farmers Market API si falta stock
+- Reserva (descuenta) ingredientes del inventario
+- Responde a Kitchen con resultado de disponibilidad
+
+## API Endpoints
+
+```http
+GET  /api                              # Health check
+GET  /api/inventory                    # Estado del inventario
+POST /api/inventory                    # Inicializar inventario (5 unidades c/u)
+GET  /api/purchases                    # Historial de compras
+GET  /api/stats                        # Estadisticas de warehouse
+POST /api/request-purchase             # Compra manual (para IA)
+POST /api/workers/kitchen-consumer     # Worker cron - procesa solicitudes
+```
+
+### Compra Manual (para IA)
+```http
+POST /api/request-purchase
+Content-Type: application/json
+
+{
+  "ingredientName": "tomato",
+  "quantity": 10
+}
+```
+
+## Arquitectura
 
 ```
-warehouse/
-├── domain/           # Lógica de negocio pura
-│   ├── entities/     # InventoryItem, Purchase
-│   ├── value-objects/# IngredientName, Quantity, etc.
-│   ├── events/       # Eventos de dominio
-│   └── repositories/ # Interfaces (puertos)
+src/
+├── domain/                 # Nucleo del negocio
+│   ├── entities/           # InventoryItem, Purchase
+│   ├── value-objects/      # IngredientName, Quantity, InventoryItemId, PurchaseId
+│   ├── events/             # IngredientsReserved, IngredientsUnavailable, PurchaseCompleted
+│   └── repositories/       # Interfaces
 │
-├── application/      # Casos de uso
-│   ├── use-cases/    # ProcessIngredientRequest, GetInventory, etc.
-│   ├── dto/          # Data Transfer Objects
-│   └── ports/        # MarketClient, KitchenClient, EventPublisher
+├── application/            # Casos de uso
+│   ├── use-cases/          # ProcessIngredientRequest, GetInventory, RequestPurchase
+│   ├── dto/                # InventoryDTO, IngredientsRequestDTO, PurchaseDTO
+│   └── ports/              # MarketClient, KitchenClient, EventPublisher
 │
-├── infrastructure/   # Implementaciones (adaptadores)
+├── infrastructure/         # Adaptadores
 │   ├── adapters/
-│   │   ├── persistence/  # Prisma repositories
-│   │   ├── messaging/    # Redis Streams (KitchenClient)
-│   │   ├── http/         # HttpMarketClient (plaza de mercado)
-│   │   └── cache/        # Redis client
-│   ├── consumers/    # KitchenRequestsConsumer
-│   ├── config/       # Dependency Injection
-│   ├── logging/      # Logger
-│   └── metrics/      # MetricsService (Prometheus-style)
+│   │   ├── persistence/    # PrismaInventoryRepository, PrismaPurchaseRepository
+│   │   ├── messaging/      # RedisKitchenClient, RedisStreamEventPublisher
+│   │   ├── http/           # HttpMarketClient (Farmers Market API)
+│   │   └── cache/          # RedisClient
+│   ├── consumers/          # KitchenRequestsConsumer
+│   └── config/             # Dependencies (DI)
 │
-└── presentation/     # API REST
-    └── api/          # Endpoints serverless
+└── presentation/           # API handlers
+    └── api/
 ```
 
-## 🚀 Tecnologías
-
-- **Node.js 20+** con ES Modules
-- **TypeScript 5.7+**
-- **Prisma ORM v7** con PostgreSQL Adapter
-- **Upstash Redis** (Redis Streams)
-- **Vercel Serverless Functions**
-- **Jest** para testing
-
-## 📦 Instalación
-
-```bash
-npm install
-```
-
-## ⚙️ Configuración
-
-Copia `.env.example` a `.env` y configura las variables:
-
-```bash
-cp .env.example .env
-```
-
-Variables requeridas:
-- `DATABASE_URL`: PostgreSQL connection string
-- `UPSTASH_REDIS_REST_URL`: Upstash Redis URL
-- `UPSTASH_REDIS_REST_TOKEN`: Upstash Redis token
-- `MARKET_API_URL`: URL de la plaza de mercado
-
-## 🗄️ Base de Datos (Prisma v7)
-
-### Generar Prisma Client
-
-```bash
-npm run prisma:generate
-```
-
-### Crear migración
-
-```bash
-npm run prisma:migrate
-```
-
-### Deploy migraciones (producción)
-
-```bash
-npm run prisma:deploy
-```
-
-### Abrir Prisma Studio
-
-```bash
-npm run prisma:studio
-```
-
-## 🔧 Desarrollo
-
-```bash
-# Modo watch
-npm run dev
-
-# Build
-npm run build
-
-# Type checking
-npm run typecheck
-
-# Linting
-npm run lint
-npm run lint:fix
-```
-
-## 🧪 Testing
-
-```bash
-# Todos los tests con coverage
-npm test
-
-# Solo tests unitarios
-npm run test:unit
-
-# Solo tests de integración
-npm run test:integration
-
-# Solo tests e2e
-npm run test:e2e
-
-# Watch mode
-npm run test:watch
-```
-
-## 📡 API Endpoints
+## Flujo de Procesamiento
 
 ```
-GET  /                           # Health check
-GET  /api/inventory              # Estado del inventario
-POST /api/inventory              # Inicializar inventario con stock default
-GET  /api/purchases              # Historial de compras en la plaza
-GET  /api/metrics                # Métricas del servicio (JSON o Prometheus)
-POST /api/workers/kitchen-consumer  # Worker para procesar solicitudes de Kitchen
+1. Kitchen solicita ingredientes → stream:warehouse:requests
+2. KitchenRequestsConsumer procesa la solicitud
+3. ProcessIngredientRequestUseCase:
+   a. Para cada ingrediente:
+      - Verificar stock en inventario
+      - Si falta → comprar en Farmers Market (max 10 intentos)
+      - Reservar (descontar) del inventario
+   b. Enviar respuesta a Kitchen
+4. Respuesta → stream:warehouse:responses
 ```
 
-### Inventario
+## Eventos
 
-**GET /api/inventory**
+### Eventos Emitidos (stream:warehouse:responses)
+
+| Evento | Datos | Descripcion |
+|--------|-------|-------------|
+| `warehouse.ingredients.reserved` | plateId, orderItemId, ingredients | Ingredientes reservados exitosamente |
+| `warehouse.ingredients.unavailable` | plateId, orderItemId, unavailableIngredients, reason | No se pudo obtener ingredientes |
+| `warehouse.purchase.completed` | purchaseId, ingredientName, obtainedQuantity | Compra en market completada |
+
+### Eventos Consumidos (stream:warehouse:requests)
+
+| Evento | Accion |
+|--------|--------|
+| `kitchen.ingredients.requested` | Procesar solicitud de ingredientes |
+
+## Consumer Worker
+
+- **Stream**: `stream:warehouse:requests`
+- **Consumer Group**: `warehouse-service`
+- **Endpoint**: `POST /api/workers/kitchen-consumer`
+
+Configurar cron en Vercel:
 ```json
 {
-  "success": true,
-  "data": {
-    "items": [
-      { "id": "...", "ingredientName": "tomato", "quantity": 5, ... },
-      { "id": "...", "ingredientName": "cheese", "quantity": 3, ... }
-    ],
-    "totalItems": 10,
-    "lastUpdated": "2024-01-01T00:00:00.000Z"
-  }
+  "crons": [{
+    "path": "/api/workers/kitchen-consumer",
+    "schedule": "* * * * *"
+  }]
 }
 ```
 
-**POST /api/inventory** - Inicializa inventario con 5 unidades de cada ingrediente
+## Farmers Market API
 
-### Historial de Compras
-
-**GET /api/purchases?limit=100**
-```json
-{
-  "success": true,
-  "data": {
-    "purchases": [
-      {
-        "id": "...",
-        "ingredientName": "tomato",
-        "requestedQuantity": 2,
-        "obtainedQuantity": 3,
-        "status": "completed",
-        ...
-      }
-    ],
-    "total": 50,
-    "successful": 45,
-    "failed": 5
-  }
-}
-```
-
-## 🔄 Flujo de Eventos
-
-1. **Kitchen** solicita ingredientes → Redis Stream `warehouse:requests`
-2. **Warehouse** consume solicitud vía `KitchenRequestsConsumer`
-3. Warehouse verifica inventario
-4. Si faltan ingredientes, compra en la **Plaza de Mercado**
-5. Warehouse reserva (descuenta) ingredientes del inventario
-6. Warehouse responde a Kitchen → Redis Stream `warehouse:responses`
-7. **Kitchen** continúa preparación del plato
-
-## 🛒 Plaza de Mercado
-
-El servicio compra ingredientes de la API externa:
+Compra ingredientes de la API externa:
 ```
 GET https://recruitment.alegra.com/api/farmers-market/buy?ingredient=tomato
 ```
@@ -201,101 +119,60 @@ Respuesta:
 { "quantitySold": 3 }
 ```
 
-**Ingredientes válidos:**
+**Ingredientes validos:**
 - tomato, lemon, potato, rice, ketchup
 - lettuce, onion, cheese, meat, chicken
 
-## 📊 Inventario Inicial
+## Variables de Entorno
 
-El servicio inicia con **5 unidades** de cada ingrediente:
-- tomato: 5
-- lemon: 5
-- potato: 5
-- rice: 5
-- ketchup: 5
-- lettuce: 5
-- onion: 5
-- cheese: 5
-- meat: 5
-- chicken: 5
+### Requeridas
+```env
+DATABASE_URL=postgresql://...              # Neon PostgreSQL
+UPSTASH_REDIS_REST_URL=https://...         # Upstash Redis REST URL
+UPSTASH_REDIS_REST_TOKEN=your_token        # Upstash Redis REST Token
+MARKET_API_URL=https://recruitment.alegra.com/api/farmers-market/buy
+```
 
-## 🚢 Despliegue en Vercel
+### Opcionales (tienen defaults)
+```env
+WAREHOUSE_REQUESTS_STREAM=stream:warehouse:requests
+WAREHOUSE_RESPONSES_STREAM=stream:warehouse:responses
+WAREHOUSE_CONSUMER_GROUP=warehouse-service
+KITCHEN_REQUESTS_BATCH_SIZE=50
+NODE_ENV=development
+LOG_LEVEL=info
+```
+
+## Inventario Inicial
+
+El servicio inicia con 5 unidades de cada ingrediente:
+- tomato, lemon, potato, rice, ketchup
+- lettuce, onion, cheese, meat, chicken
+
+## Desarrollo
 
 ```bash
-vercel
-```
-
-El servicio se despliega automáticamente con:
-- Prisma migrations via `buildCommand`
-- Serverless functions en `/api/*`
-- Variables de entorno configuradas en Vercel
-
-## 📝 Prisma ORM v7 - Cambios Importantes
-
-Este proyecto usa **Prisma ORM v7** con las siguientes configuraciones:
-
-### ESM (ES Modules)
-- `package.json` incluye `"type": "module"`
-- `tsconfig.json` configurado con `module: "ESNext"`
-
-### Nuevo Provider
-```prisma
-generator client {
-  provider = "prisma-client"  // Nuevo en v7
-}
-```
-
-### Modelos
-```prisma
-model InventoryItem {
-  id              String   @id @default(cuid())
-  ingredientName  String   @unique
-  quantity        Int      @default(5)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-}
-
-model Purchase {
-  id                String    @id @default(cuid())
-  ingredientName    String
-  requestedQuantity Int
-  obtainedQuantity  Int       @default(0)
-  status            String    @default("pending")
-  plateId           String?
-  orderId           String?
-  errorMessage      String?
-  createdAt         DateTime  @default(now())
-  completedAt       DateTime?
-}
-```
-
-### Primera vez - Setup completo
-
-```bash
-# 1. Instalar dependencias
+# Instalar dependencias
 npm install
 
-# 2. Configurar variables de entorno
-cp .env.example .env
-# Edita .env con tus credenciales
-
-# 3. Generar Prisma Client
+# Generar cliente Prisma
 npm run prisma:generate
 
-# 4. Ejecutar migraciones
-npm run prisma:migrate
+# Desarrollo local (puerto 3002)
+npm run dev
 
-# 5. Verificar tipos
-npm run typecheck
-
-# 6. Ejecutar tests
+# Tests
 npm test
+npm run test:coverage
+
+# Lint y tipos
+npm run lint
+npm run typecheck
 ```
 
-## 🤝 Contribuir
+## Stack
 
-Este servicio es parte del sistema FreeLunch. Ver el README principal del monorepo para guías de contribución.
-
-## 📄 Licencia
-
-MIT © StartCodex
+- Vercel Serverless Functions
+- PostgreSQL (Neon) + Prisma
+- Redis Streams (Upstash)
+- TypeScript

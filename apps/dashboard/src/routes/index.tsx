@@ -9,9 +9,11 @@ import {
   Clock,
   Loader2,
   AlertCircle,
+  MessageCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStats, useCreateOrder, useInventory, useOrders, useRecipes } from '../hooks';
+import { dispatchOpenChat } from '../components/FloatingChat';
 import { Skeleton } from '../components/ui/skeleton';
 import type { OrderListItem, InventoryItem } from '../types/api';
 
@@ -229,6 +231,11 @@ function InventorySummary({ items }: { items: InventoryItem[] }) {
   const lowStock = items.filter((item) => item.quantity < 3);
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
 
+  const handleAskAboutLowStock = () => {
+    const ingredientNames = lowStock.map((item) => item.ingredientName).join(', ');
+    dispatchOpenChat(`Muéstrame los ingredientes con stock bajo: ${ingredientNames}`);
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex justify-between text-sm">
@@ -241,9 +248,18 @@ function InventorySummary({ items }: { items: InventoryItem[] }) {
       </div>
       {lowStock.length > 0 && (
         <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
-          <p className="text-sm text-orange-500 font-medium">
-            {lowStock.length} ingredientes con stock bajo
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-orange-500 font-medium">
+              {lowStock.length} ingredientes con stock bajo
+            </p>
+            <button
+              onClick={handleAskAboutLowStock}
+              className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:text-orange-400 dark:hover:bg-orange-900/20 rounded transition-colors"
+            >
+              <MessageCircle className="h-3 w-3" />
+              Ver detalles
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -276,7 +292,7 @@ function RecentOrdersList({ orders }: { orders: OrderListItem[] }) {
         >
           <div>
             <p className="font-medium text-gray-900 dark:text-white">
-              Orden #{order.id.slice(-6)}
+              Orden #{order.id}
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-400">
               {order.quantity} platos • {new Date(order.createdAt).toLocaleTimeString()}

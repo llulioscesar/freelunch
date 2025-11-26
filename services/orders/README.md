@@ -1,279 +1,118 @@
-# Orders Service - Hexagonal Architecture
+# Orders Service
 
-Servicio de gestión de pedidos con Arquitectura Hexagonal y Domain-Driven Design (DDD).
+Servicio de gestion de pedidos con Arquitectura Hexagonal y Domain-Driven Design.
 
-## 📚 Documentación
+## Descripcion
 
-- **[Quick Start - Git Workflow & CI/CD](../../docs/QUICK_START.md)** - Respuestas rápidas para empezar
-- **[Git Workflow Completo](../../docs/GIT_WORKFLOW.md)** - Flujo detallado dev → test → main
-- **[Pipeline Flow](../../docs/PIPELINE_FLOW.md)** - Cuándo y dónde se ejecuta el pipeline
-- **[Vercel Setup](../../docs/VERCEL_SETUP.md)** - Configuración multi-ambiente en Vercel
-- **[Vercel Free Tier](../../docs/VERCEL_FREE_TIER.md)** - ✅ Staging + Production GRATIS
+Maneja el ciclo de vida completo de los pedidos:
+- Creacion de ordenes con multiples platos (OrderItems)
+- Tracking individual de cada plato
+- Actualizacion de estado basada en eventos de Kitchen
+- Progreso en tiempo real
 
-## 🚀 Testing & Coverage
+## API Endpoints
 
-[![Coverage](https://img.shields.io/badge/coverage-74.3%25-brightgreen)](./coverage)
-[![Tests](https://img.shields.io/badge/tests-460%20passing-success)](./__tests__)
-
-- **Branches:** 74.3% ✅ (objetivo: 70%)
-- **Statements:** 75.79%
-- **Functions:** 81.19%
-- **Lines:** 75.68%
-
-## 🏗️ Arquitectura
-
-Este servicio implementa **Arquitectura Hexagonal** (también conocida como Ports and Adapters) con los principios de **Domain-Driven Design**:
-
-```
-src/
-├── domain/              # 💎 Núcleo del negocio (sin dependencias)
-│   ├── entities/        # Entidades del dominio
-│   ├── value-objects/   # Objetos de valor
-│   ├── events/          # Eventos de dominio
-│   └── repositories/    # Interfaces de repositorios
-│
-├── application/         # 📋 Casos de uso
-│   ├── use-cases/       # Lógica de aplicación
-│   ├── dto/             # Data Transfer Objects
-│   └── ports/           # Puertos (interfaces)
-│
-├── infrastructure/      # 🔌 Adaptadores externos
-│   ├── adapters/
-│   │   ├── persistence/ # Implementaciones de DB
-│   │   └── messaging/   # Publicadores de eventos
-│   └── config/          # Configuración y DI
-│
-└── presentation/        # 🌐 Capa de presentación
-    └── api/             # Endpoints HTTP
-```
-
-## 🎯 Principios de Diseño
-
-### Domain Layer (Centro)
-- **Sin dependencias externas**
-- Contiene la lógica de negocio pura
-- Value Objects inmutables
-- Entidades con comportamiento rico
-- Eventos de dominio
-
-### Application Layer
-- Orquesta casos de uso
-- Define puertos (interfaces)
-- No contiene lógica de negocio
-- Independiente del framework
-
-### Infrastructure Layer
-- Implementa los puertos
-- Adaptadores para DB, mensajería, etc.
-- Detalles técnicos
-
-### Presentation Layer
-- Endpoints HTTP
-- Validación de entrada
-- Transformación de respuestas
-
-## 📋 Descripción
-
-Este microservicio maneja:
-- Creación de nuevos pedidos con múltiples platos
-- Tracking individual de cada plato (OrderItem)
-- Listado y consulta de pedidos con progreso en tiempo real
-- Actualización de estado de pedidos basada en eventos
-- Comunicación bidireccional con Kitchen Service via eventos
-
-## 🚀 Instalación
-
-```bash
-# Instalar dependencias
-npm install
-
-# Generar cliente Prisma
-npm run db:generate
-
-# Configurar variables de entorno
-cp .env.example .env.local
-# Editar .env.local con tus valores
-```
-
-## 🔧 Desarrollo Local
-
-```bash
-# Iniciar en modo desarrollo (puerto 3001)
-npm run dev
-
-# Ejecutar migraciones
-npm run db:migrate
-
-# Ver base de datos con Prisma Studio
-npm run db:studio
-
-# Ejecutar tests
-npm test
-
-# Coverage
-npm run test:coverage
-
-# Linting
-npm run lint
-
-# Type check
-npm run typecheck
-
-# Verificar todo antes de push (lint + typecheck + tests + build)
-npm run verify
-```
-
-## 📡 API Endpoints
-
-### Health Check
 ```http
-GET /api
+GET  /api                       # Health check
+POST /api/create                # Crear orden
+GET  /api/list                  # Listar ordenes (paginado)
+GET  /api/status?id=ORD-xxx     # Estado de una orden
+GET  /api/history?id=ORD-xxx    # Historial de cambios
+GET  /api/stats                 # Estadisticas generales
+GET  /api/metrics               # Metricas del servicio
+POST /api/workers/kitchen-events # Worker cron (interno)
 ```
 
-### Crear Pedido
+### Crear Orden
 ```http
 POST /api/create
 Content-Type: application/json
 
 {
   "quantity": 5,
-  "customerName": "Juan", // opcional
+  "customerName": "Juan",  // opcional
   "notes": "Sin cebolla"   // opcional
 }
 ```
 
-### Listar Pedidos
+### Listar Ordenes
 ```http
 GET /api/list?page=1&limit=10&status=PENDING
 ```
 
-### Obtener Estado de Pedido
-```http
-GET /api/status?id=ORD-123456
-```
-
-### Actualizar Estado (interno)
-```http
-PATCH /api/status?id=ORD-123456
-Content-Type: application/json
-
-{
-  "status": "READY",
-  "completedAt": "2024-01-01T12:00:00Z"
-}
-```
-
-## 🏭 Value Objects
-
-### OrderId
-- Genera IDs únicos con formato: `ORD-{timestamp}-{random}`
-- Validación automática del formato
-
-### OrderStatus
-- Estados: PENDING, PREPARING, READY, DELIVERED, FAILED, CANCELLED
-- Validación de transiciones permitidas
-- Lógica de negocio encapsulada
-
-### Quantity
-- Rango: 1-100 unidades
-- Cálculo de tiempo estimado de preparación
-- Detección de procesamiento en lote
-
-### CustomerInfo
-- Nombre del cliente (default: "Anonymous")
-- Notas especiales opcionales
-- Validación de longitud
-
-## 🔄 Eventos
-
-### Eventos que EMITE (Publica)
-
-| Evento | Cuándo | Destino | Datos |
-|--------|--------|---------|-------|
-| `ORDER_CREATED` | Al crear un pedido | Kitchen Service | orderId, quantity, items[] |
-| `ORDER_STATUS_CHANGED` | Al cambiar estado | Analytics | orderId, previousStatus, newStatus |
-| `ORDER_COMPLETED` | Cuando todos los platos están listos | Analytics | orderId, completedAt, preparationTime |
-| `ORDER_FAILED` | Cuando algún plato falla | Analytics | orderId, reason |
-
-### Eventos que ESCUCHA (Consume)
-
-| Evento | De | Acción | Stream |
-|--------|-----|--------|--------|
-| `RECIPE_ASSIGNED` | Kitchen Service | Actualiza OrderItem con recipeId | stream:kitchen:responses |
-| `DISH_PREPARING` | Kitchen Service | Marca item como PREPARING | stream:kitchen:responses |
-| `DISH_PREPARED` | Kitchen Service | Marca item como READY | stream:kitchen:responses |
-| `DISH_FAILED` | Kitchen Service | Marca item como FAILED | stream:kitchen:responses |
-
-### Flujo de Eventos
+## Arquitectura
 
 ```
-Orders Service                Kitchen Service
-     │                              │
-     ├─ POST /api/create            │
-     │  { quantity: 5 }             │
-     │                              │
-     ├─ Crea 5 OrderItems           │
-     │  (status: PENDING)           │
-     │                              │
-     ├─ Publica ───────────────────>│
-     │  ORDER_CREATED               │
-     │  { orderId, items[] }        │
-     │                              │
-     │                        Selecciona receta
-     │                              │
-     │<──────────────────── Publica │
-     │  RECIPE_ASSIGNED             │
-     │  { itemId, recipeId }        │
-     │                              │
-     ├─ Actualiza OrderItem         │
-     │  (status: ASSIGNED)          │
-     │                              │
-     │<──────────────────── Publica │
-     │  DISH_PREPARED               │
-     │  { itemId }                  │
-     │                              │
-     ├─ Marca item como READY       │
-     │  (progress: 20% → 1/5)       │
-     │                              │
-     ├─ Auto-completa cuando        │
-     │  todos los items listos      │
-     │                              │
-     ├─ Publica ───────────────────>│
-     │  ORDER_COMPLETED             │
-     └─ (status: DELIVERED)         │
+src/
+├── domain/                 # Nucleo del negocio
+│   ├── entities/           # Order, OrderItem
+│   ├── value-objects/      # OrderId, OrderStatus, Quantity, CustomerInfo
+│   ├── events/             # OrderCreated, OrderCompleted, OrderFailed
+│   └── repositories/       # Interfaces
+│
+├── application/            # Casos de uso
+│   ├── use-cases/          # CreateOrder, ListOrders, UpdateOrderItemStatus
+│   ├── dto/                # CreateOrderDTO
+│   └── ports/              # EventPublisher interface
+│
+├── infrastructure/         # Adaptadores
+│   ├── adapters/
+│   │   ├── persistence/    # PrismaOrderRepository, CachedOrderRepository
+│   │   ├── messaging/      # RedisStreamEventPublisher
+│   │   └── cache/          # RedisClient
+│   ├── consumers/          # KitchenEventsConsumer
+│   └── config/             # Dependencies (DI)
+│
+└── presentation/           # API handlers
+    └── api/                # create, list, status, history
 ```
 
-## 🧪 Testing
+## Estados
 
-```bash
-# Tests unitarios
-npm test
-
-# Test manual con curl
-curl -X POST http://localhost:3001/api/create \
-  -H "Content-Type: application/json" \
-  -d '{"quantity": 2}'
+### Order Status
+```
+PENDING → PREPARING → INGREDIENTS_REQUESTED → COOKING → READY → DELIVERED
+                                    ↓                      ↓
+                                 FAILED                  FAILED
 ```
 
-## 🔐 Variables de Entorno
-
-```env
-DATABASE_URL=              # PostgreSQL connection string
-QSTASH_TOKEN=              # Token de autenticación QStash
-KITCHEN_SERVICE_URL=       # URL del Kitchen Service
-SERVICE_NAME=orders-service
-NODE_ENV=development
-PORT=3001
+### OrderItem Status
+```
+PENDING → ASSIGNED → INGREDIENTS_REQUESTED → COOKING → READY → DELIVERED
+                              ↓                  ↓
+                           FAILED             FAILED
 ```
 
-## 🔄 Consumer Worker
+## Eventos
 
-El servicio incluye un consumer worker que procesa eventos de Kitchen Service.
+### Eventos Emitidos (stream:orders:events)
 
-### Opción A: Vercel Cron (Recomendado para Serverless)
+| Evento | Datos | Descripcion |
+|--------|-------|-------------|
+| `order.created` | orderId, quantity, customerName, items[] | Nueva orden creada |
+| `order.status.changed` | orderId, previousStatus, newStatus | Cambio de estado |
+| `order.completed` | orderId, completedAt, preparationTimeMinutes | Orden completada |
+| `order.failed` | orderId, reason, failedAt | Orden fallida |
 
-Configurar en `vercel.json`:
+### Eventos Consumidos (stream:kitchen:events)
 
+| Evento | Accion |
+|--------|--------|
+| `kitchen.plate.assigned` | OrderItem → ASSIGNED |
+| `kitchen.ingredients.requested` | OrderItem → INGREDIENTS_REQUESTED |
+| `kitchen.plate.cooking` | OrderItem → COOKING |
+| `kitchen.plate.ready` | OrderItem → READY |
+| `kitchen.plate.failed` | OrderItem → FAILED |
+
+## Consumer Worker
+
+El servicio consume eventos de Kitchen via Redis Streams:
+
+- **Stream**: `stream:kitchen:events`
+- **Consumer Group**: `orders-service`
+- **Endpoint**: `POST /api/workers/kitchen-events`
+
+Configurar cron en Vercel para ejecutar cada minuto:
 ```json
 {
   "crons": [{
@@ -283,76 +122,48 @@ Configurar en `vercel.json`:
 }
 ```
 
-Esto ejecuta el worker cada minuto para procesar eventos pendientes.
+## Variables de Entorno
 
-### Opción B: Long-Running Process
+### Requeridas
+```env
+DATABASE_URL=postgresql://...           # Neon PostgreSQL
+REDIS_URL=https://...upstash.io         # Upstash Redis REST URL
+REDIS_TOKEN=your_token                  # Upstash Redis REST Token
+```
+
+### Opcionales
+```env
+SERVICE_NAME=orders-service             # Nombre del servicio (default: orders-service)
+NODE_ENV=development                    # development | production | test
+LOG_LEVEL=info                          # trace | debug | info | warn | error | fatal
+```
+
+> Alternativa: Puedes usar `UPSTASH_REDIS_REST_URL` y `UPSTASH_REDIS_REST_TOKEN` en lugar de `REDIS_URL` y `REDIS_TOKEN`
+
+## Desarrollo
 
 ```bash
-# En desarrollo
-npm run worker:kitchen
+# Instalar dependencias
+npm install
 
-# En producción (Docker/PM2)
-node dist/workers/kitchen-consumer.js
+# Generar cliente Prisma
+npm run db:generate
+
+# Desarrollo local (puerto 3001)
+npm run dev
+
+# Tests
+npm test
+npm run test:coverage
+
+# Lint y tipos
+npm run lint
+npm run typecheck
 ```
 
-### Monitoreo del Consumer
+## Stack
 
-```bash
-# Ver mensajes pendientes
-curl http://localhost:3001/api/workers/kitchen-events
-
-# Respuesta
-{
-  "success": true,
-  "processed": 5,
-  "duration": 234,
-  "timestamp": "2025-01-22T10:30:00Z"
-}
-```
-
-## 📦 Despliegue
-
-```bash
-# Generar build
-npm run build
-
-# Desplegar a producción
-npm run deploy
-```
-
-## 🎓 Ventajas de la Arquitectura Hexagonal
-
-1. **Testabilidad**: El dominio se puede testear sin dependencias externas
-2. **Flexibilidad**: Cambiar de Prisma a MongoDB? Solo tocas el adaptador
-3. **Mantenibilidad**: Separación clara de responsabilidades
-4. **Escalabilidad**: Fácil agregar nuevos adaptadores
-5. **Domain-Driven**: La lógica de negocio está en el centro
-
-## 📚 Patrones Implementados
-
-- **Repository Pattern**: Abstracción del acceso a datos
-- **Use Case Pattern**: Cada caso de uso en su propia clase
-- **Value Objects**: Encapsulación de conceptos del dominio
-- **Domain Events**: Comunicación desacoplada
-- **Dependency Injection**: Inversión de dependencias
-- **Ports & Adapters**: Arquitectura hexagonal
-
-## 🚦 Estados del Pedido
-
-```mermaid
-stateDiagram-v2
-    [*] --> PENDING
-    PENDING --> PREPARING
-    PREPARING --> INGREDIENTS_REQUESTED
-    INGREDIENTS_REQUESTED --> COOKING
-    COOKING --> READY
-    READY --> DELIVERED
-    PREPARING --> FAILED
-    COOKING --> FAILED
-    PENDING --> CANCELLED
-    DELIVERED --> [*]
-    FAILED --> [*]
-    CANCELLED --> [*]
-```
-
-El servicio está diseñado para ser mantenible, testeable y escalable siguiendo los mejores principios de arquitectura de software.
+- Vercel Serverless Functions
+- PostgreSQL (Neon) + Prisma
+- Redis Streams (Upstash)
+- TypeScript

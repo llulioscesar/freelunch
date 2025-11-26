@@ -8,7 +8,9 @@ import {
   Bot,
   ChefHat,
   Sparkles,
+  LogOut,
 } from 'lucide-react';
+import { useAuth } from '@/lib/auth';
 
 import {
   Sidebar,
@@ -60,6 +62,12 @@ const navAI = [
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const location = useLocation();
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    window.location.href = '/login';
+  };
 
   return (
     <Sidebar variant="inset" {...props}>
@@ -130,11 +138,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       <SidebarFooter>
         <SidebarMenu>
+          {user && (
+            <SidebarMenuItem>
+              <SidebarMenuButton size="sm" className="text-muted-foreground">
+                <span className="text-xs truncate">{user.email}</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
           <SidebarMenuItem>
-            <SidebarMenuButton size="sm" className="text-muted-foreground">
-              <span className="text-xs">
-                © 2025 FreeLunch - Sistema Automatizado
-              </span>
+            <SidebarMenuButton
+              size="sm"
+              onClick={handleLogout}
+              className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+            >
+              <LogOut className="size-4" />
+              <span>Cerrar sesion</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

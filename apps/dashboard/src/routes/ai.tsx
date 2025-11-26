@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { Bot, Sparkles, AlertTriangle, RefreshCw, ChefHat } from 'lucide-react';
+import { Bot, Sparkles, AlertTriangle, RefreshCw, ChefHat, Wrench } from 'lucide-react';
 import { useRecommendations } from '../hooks/useRecommendations';
+import { dispatchOpenChat } from '../components/FloatingChat';
 import type { CriticalAlert, RecipeRecommendation } from '../types/api';
 
 export const Route = createFileRoute('/ai')({
@@ -116,11 +117,26 @@ function AIPage() {
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               Alertas Criticas
             </h2>
-            {recommendations && (
-              <span className="ml-auto text-sm text-gray-500">
-                {recommendations.criticalAlerts.length} alertas
-              </span>
-            )}
+            <div className="ml-auto flex items-center gap-2">
+              {recommendations && recommendations.criticalAlerts.length > 0 && (
+                <button
+                  onClick={() => {
+                    const ingredients = recommendations.criticalAlerts.map(a => a.ingredient);
+                    const message = `Compra 10 unidades de cada uno de estos ingredientes: ${ingredients.join(', ')}`;
+                    dispatchOpenChat(message);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-green-500 rounded-lg hover:bg-green-600 transition-colors"
+                >
+                  <Wrench className="h-4 w-4" />
+                  Solucionar
+                </button>
+              )}
+              {recommendations && (
+                <span className="text-sm text-gray-500">
+                  {recommendations.criticalAlerts.length} alertas
+                </span>
+              )}
+            </div>
           </div>
 
           {loading ? (

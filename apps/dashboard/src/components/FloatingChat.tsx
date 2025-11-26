@@ -1,7 +1,14 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Bot, X, Send, Trash2, Loader2, MessageCircle } from 'lucide-react';
 import { useChat } from '../hooks/useChat';
 import type { ChatMessage } from '../types/api';
+
+// Custom event for opening chat with a message
+export const OPEN_CHAT_EVENT = 'open-chat-with-message';
+
+export function dispatchOpenChat(message: string) {
+  window.dispatchEvent(new CustomEvent(OPEN_CHAT_EVENT, { detail: { message } }));
+}
 
 function ChatMessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === 'user';
@@ -29,6 +36,24 @@ export function FloatingChat() {
   const { messages, loading, error, sendMessage, clearChat } = useChat();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Handle custom event to open chat with a message
+  const handleOpenChatEvent = useCallback((event: Event) => {
+    const customEvent = event as CustomEvent<{ message: string }>;
+    const message = customEvent.detail.message;
+    setIsOpen(true);
+    // Small delay to ensure chat is open before sending
+    setTimeout(() => {
+      sendMessage(message);
+    }, 100);
+  }, [sendMessage]);
+
+  useEffect(() => {
+    window.addEventListener(OPEN_CHAT_EVENT, handleOpenChatEvent);
+    return () => {
+      window.removeEventListener(OPEN_CHAT_EVENT, handleOpenChatEvent);
+    };
+  }, [handleOpenChatEvent]);
 
   useEffect(() => {
     if (isOpen) {
