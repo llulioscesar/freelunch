@@ -18,6 +18,7 @@ import { ProcessIngredientRequestUseCase } from '../../application/use-cases/Pro
 import { GetInventoryUseCase } from '../../application/use-cases/GetInventoryUseCase';
 import { GetPurchaseHistoryUseCase } from '../../application/use-cases/GetPurchaseHistoryUseCase';
 import { InitializeInventoryUseCase } from '../../application/use-cases/InitializeInventoryUseCase';
+import { GetWarehouseStatsUseCase } from '../../application/use-cases/GetWarehouseStatsUseCase';
 import { KitchenRequestsConsumer } from '../consumers/KitchenRequestsConsumer';
 
 export interface Dependencies {
@@ -35,6 +36,7 @@ export interface Dependencies {
   getInventoryUseCase: GetInventoryUseCase;
   getPurchaseHistoryUseCase: GetPurchaseHistoryUseCase;
   initializeInventoryUseCase: InitializeInventoryUseCase;
+  getWarehouseStatsUseCase: GetWarehouseStatsUseCase;
 
   // Consumers
   kitchenRequestsConsumer: KitchenRequestsConsumer;
@@ -70,6 +72,11 @@ export class DependencyContainer {
 
     const initializeInventoryUseCase = new InitializeInventoryUseCase(inventoryRepository);
 
+    const getWarehouseStatsUseCase = new GetWarehouseStatsUseCase(
+      inventoryRepository,
+      purchaseRepository
+    );
+
     // Consumers
     const kitchenRequestsConsumer = new KitchenRequestsConsumer(
       processIngredientRequestUseCase
@@ -85,6 +92,7 @@ export class DependencyContainer {
       getInventoryUseCase,
       getPurchaseHistoryUseCase,
       initializeInventoryUseCase,
+      getWarehouseStatsUseCase,
       kitchenRequestsConsumer,
     };
 

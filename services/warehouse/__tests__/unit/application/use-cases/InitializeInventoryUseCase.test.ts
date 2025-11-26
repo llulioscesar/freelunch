@@ -16,6 +16,7 @@ describe('InitializeInventoryUseCase', () => {
       initializeDefaultStock: jest.fn(),
       findByIngredientNames: jest.fn(),
       checkAvailability: jest.fn(),
+      getStats: jest.fn(),
     };
 
     useCase = new InitializeInventoryUseCase(mockInventoryRepository);

@@ -56,4 +56,27 @@ export interface PlateRepository {
    * Count total plates
    */
   count(): Promise<number>;
+
+  /**
+   * Get plate counts grouped by status
+   */
+  getCountsByStatus(): Promise<Record<string, number>>;
+
+  /**
+   * Get recipe statistics (most prepared, success rates)
+   */
+  getRecipeStats(limit?: number): Promise<{
+    recipeName: string;
+    total: number;
+    ready: number;
+    failed: number;
+  }[]>;
+
+  /**
+   * Get failure reasons with counts
+   */
+  getFailureReasons(limit?: number): Promise<{
+    reason: string;
+    count: number;
+  }[]>;
 }

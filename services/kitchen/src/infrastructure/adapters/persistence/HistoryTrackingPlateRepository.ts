@@ -104,4 +104,24 @@ export class HistoryTrackingPlateRepository implements PlateRepository {
   async count(): Promise<number> {
     return this.delegate.count();
   }
+
+  async getCountsByStatus(): Promise<Record<string, number>> {
+    return this.delegate.getCountsByStatus();
+  }
+
+  async getRecipeStats(limit?: number): Promise<{
+    recipeName: string;
+    total: number;
+    ready: number;
+    failed: number;
+  }[]> {
+    return this.delegate.getRecipeStats(limit);
+  }
+
+  async getFailureReasons(limit?: number): Promise<{
+    reason: string;
+    count: number;
+  }[]> {
+    return this.delegate.getFailureReasons(limit);
+  }
 }
