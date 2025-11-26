@@ -110,6 +110,24 @@ Parametros:
 - customerName (opcional): Nombre del cliente
 - notes (opcional): Notas adicionales
 
+### requestPurchase
+Usa esta herramienta para:
+- Comprar ingredientes que tienen stock bajo o sin stock
+- Resolver alertas criticas de inventario
+- Reabastecer el almacen
+
+Parametros:
+- ingredientName (requerido): Nombre del ingrediente a comprar
+- quantity (requerido): Cantidad a comprar (1-100)
+
+### getAlerts
+Usa esta herramienta para:
+- Obtener las alertas criticas actualizadas
+- Ver qué ingredientes necesitan atención
+- Verificar el estado del inventario antes de tomar acciones
+
+No requiere parametros.
+
 ## INSTRUCCIONES
 - Responde de forma concisa y útil
 - Usa el contexto del sistema para dar respuestas precisas
@@ -119,7 +137,12 @@ Parametros:
 - Sé proactivo sugiriendo acciones cuando sea relevante
 - Cuando el usuario pida crear una orden, usa la herramienta createOrder
 - Confirma al usuario cuando una acción se haya completado exitosamente
-- Si una acción falla, explica el error de forma clara`;
+- Si una acción falla, explica el error de forma clara
+- Cuando te pidan resolver alertas criticas:
+  1. Primero usa getAlerts para obtener la lista actualizada
+  2. Luego usa requestPurchase para cada ingrediente que necesite stock
+  3. IMPORTANTE: Usa el nombre EXACTO del ingrediente como aparece en las alertas (ej: si la alerta dice "tomato", usa "tomato", NO "tomate")
+  4. Reporta el resultado de cada compra al usuario`;
 }
 
 export function buildChatPrompt(systemPrompt: string, userMessage: string): string {
