@@ -24,6 +24,7 @@ describe('ProcessIngredientRequestUseCase', () => {
       initializeDefaultStock: jest.fn(),
       findByIngredientNames: jest.fn(),
       checkAvailability: jest.fn(),
+      getStats: jest.fn(),
     };
 
     mockPurchaseRepository = {
@@ -38,6 +39,8 @@ describe('ProcessIngredientRequestUseCase', () => {
       countByStatus: jest.fn(),
       getStats: jest.fn(),
       getTotalPurchasedByIngredient: jest.fn(),
+      getFailedByIngredient: jest.fn(),
+      getCountsByStatus: jest.fn(),
     };
 
     mockMarketClient = {

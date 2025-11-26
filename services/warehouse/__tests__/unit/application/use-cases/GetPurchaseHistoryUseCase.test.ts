@@ -22,6 +22,8 @@ describe('GetPurchaseHistoryUseCase', () => {
       countByStatus: jest.fn(),
       getStats: jest.fn(),
       getTotalPurchasedByIngredient: jest.fn(),
+      getFailedByIngredient: jest.fn(),
+      getCountsByStatus: jest.fn(),
     };
 
     useCase = new GetPurchaseHistoryUseCase(mockPurchaseRepository);
