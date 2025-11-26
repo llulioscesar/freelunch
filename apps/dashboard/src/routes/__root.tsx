@@ -1,7 +1,8 @@
-import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/react-router'
+import { HeadContent, Outlet, Scripts, createRootRoute, useLocation, redirect } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Layout } from '../components/layout'
 import { FloatingChat } from '../components/FloatingChat'
+import { AuthProvider } from '../lib/auth'
 
 import appCss from '../styles.css?url'
 
@@ -47,12 +48,42 @@ function RootComponent() {
   return (
     <RootDocument>
       <QueryClientProvider client={queryClient}>
-        <Layout>
-          <Outlet />
-        </Layout>
-        <FloatingChat />
+        <AuthProvider>
+          <AuthenticatedLayout />
+        </AuthProvider>
       </QueryClientProvider>
     </RootDocument>
+  )
+}
+
+function AuthenticatedLayout() {
+  const location = useLocation()
+  const isLoginPage = location.pathname === '/login'
+
+  // Check auth on protected routes
+  if (!isLoginPage) {
+    const stored = typeof window !== 'undefined' ? localStorage.getItem('freelunch_auth') : null
+    if (!stored) {
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login'
+      }
+      return null
+    }
+  }
+
+  // Login page - no layout
+  if (isLoginPage) {
+    return <Outlet />
+  }
+
+  // Authenticated pages - with layout
+  return (
+    <>
+      <Layout>
+        <Outlet />
+      </Layout>
+      <FloatingChat />
+    </>
   )
 }
 
