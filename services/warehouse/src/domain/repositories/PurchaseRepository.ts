@@ -38,6 +38,11 @@ export interface PurchaseRepository {
   findRecent(limit: number): Promise<Purchase[]>;
 
   /**
+   * Get purchases with pagination
+   */
+  findPaginated(page: number, limit: number): Promise<{ purchases: Purchase[]; total: number }>;
+
+  /**
    * Save a purchase (create or update)
    */
   save(purchase: Purchase): Promise<void>;
@@ -46,6 +51,11 @@ export interface PurchaseRepository {
    * Count purchases by status
    */
   countByStatus(status: PurchaseStatus): Promise<number>;
+
+  /**
+   * Get global stats (total, successful, failed)
+   */
+  getStats(): Promise<{ total: number; successful: number; failed: number }>;
 
   /**
    * Get total quantity purchased by ingredient

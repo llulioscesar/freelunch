@@ -20,4 +20,9 @@ export interface PurchaseHistoryDTO {
   total: number;
   successful: number;
   failed: number;
+  pagination?: {
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }

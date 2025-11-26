@@ -82,7 +82,7 @@ export interface Purchase {
   ingredientName: string;
   requestedQuantity: number;
   obtainedQuantity: number;
-  status: 'PENDING' | 'COMPLETED' | 'FAILED';
+  status: 'pending' | 'completed' | 'failed';
   plateId?: string;
   orderId?: string;
   errorMessage?: string;
@@ -95,6 +95,23 @@ export interface PurchaseHistory {
   total: number;
   successful: number;
   failed: number;
+  pagination?: {
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+// Status History Types
+export interface StatusHistoryEntry {
+  id: string;
+  orderItemId: string;
+  fromStatus: string | null;
+  toStatus: string;
+  recipeId?: string;
+  recipeName?: string;
+  reason?: string;
+  changedAt: string;
 }
 
 // API Response Types

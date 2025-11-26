@@ -35,12 +35,15 @@ async function handler(
   try {
     const useCase = getUseCase();
 
-    // Parse limit from query params
+    // Parse pagination from query params
+    const page = req.query.page
+      ? parseInt(req.query.page as string, 10)
+      : 1;
     const limit = req.query.limit
       ? parseInt(req.query.limit as string, 10)
-      : 100;
+      : 10;
 
-    const history = await useCase.execute({ limit });
+    const history = await useCase.execute({ page, limit });
 
     return res.status(200).json({
       success: true,

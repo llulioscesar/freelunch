@@ -20,7 +20,7 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
-const routeTitles: Record<string, { title: string; parent?: string }> = {
+const routeTitles: Record<string, { title: string; parent?: string; parentLink?: string }> = {
   '/': { title: 'Dashboard' },
   '/orders': { title: 'Órdenes', parent: 'Gestión' },
   '/inventory': { title: 'Inventario', parent: 'Gestión' },
@@ -29,9 +29,22 @@ const routeTitles: Record<string, { title: string; parent?: string }> = {
   '/ai': { title: 'Asistente IA', parent: 'Inteligencia Artificial' },
 };
 
+function getRouteInfo(pathname: string): { title: string; parent?: string; parentLink?: string } {
+  // Check for order detail route
+  if (pathname.startsWith('/orders/')) {
+    const orderId = pathname.split('/')[2];
+    return {
+      title: `Orden #${orderId.slice(-8)}`,
+      parent: 'Órdenes',
+      parentLink: '/orders',
+    };
+  }
+  return routeTitles[pathname] || { title: 'Página' };
+}
+
 export function Layout({ children }: LayoutProps) {
   const location = useLocation();
-  const currentRoute = routeTitles[location.pathname] || { title: 'Página' };
+  const currentRoute = getRouteInfo(location.pathname);
 
   return (
     <SidebarProvider>
@@ -49,7 +62,7 @@ export function Layout({ children }: LayoutProps) {
                 {currentRoute.parent && (
                   <>
                     <BreadcrumbItem className="hidden md:block">
-                      <BreadcrumbLink href="/">
+                      <BreadcrumbLink href={currentRoute.parentLink || '/'}>
                         {currentRoute.parent}
                       </BreadcrumbLink>
                     </BreadcrumbItem>
