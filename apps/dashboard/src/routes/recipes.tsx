@@ -1,11 +1,16 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { UtensilsCrossed } from 'lucide-react';
+import { useRecipes } from '../hooks';
+import { Skeleton } from '../components/ui/skeleton';
 
 export const Route = createFileRoute('/recipes')({
   component: RecipesPage,
 });
 
 function RecipesPage() {
+  const { data: recipesData, isLoading } = useRecipes();
+  const recipeCount = recipesData?.recipes?.length ?? 0;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -15,7 +20,11 @@ function RecipesPage() {
             Recetas
           </h1>
           <p className="text-gray-500 dark:text-gray-400">
-            6 recetas disponibles para la jornada de donación
+            {isLoading ? (
+              <Skeleton className="h-4 w-48 inline-block" />
+            ) : (
+              `${recipeCount} recetas disponibles para la jornada de donación`
+            )}
           </p>
         </div>
       </div>

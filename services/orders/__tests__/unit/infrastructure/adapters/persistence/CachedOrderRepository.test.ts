@@ -15,6 +15,8 @@ const mockRedis = {
   del: jest.fn(),
   keys: jest.fn(),
   exists: jest.fn(),
+  sadd: jest.fn(),
+  smembers: jest.fn(),
 };
 
 jest.mock('@upstash/redis', () => ({
@@ -41,6 +43,10 @@ describe('CachedOrderRepository (Decorator with Mocks)', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    // Default mock implementations for Redis
+    mockRedis.sadd.mockResolvedValue(1);
+    mockRedis.smembers.mockResolvedValue([]);
 
     // Create mock base repository
     mockBaseRepository = {

@@ -14,6 +14,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
+import { Toaster } from '@/components/ui/sonner';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -66,6 +67,7 @@ export function Layout({ children }: LayoutProps) {
           {children}
         </div>
       </SidebarInset>
+      <Toaster />
     </SidebarProvider>
   );
 }
