@@ -1,8 +1,8 @@
-import { HeadContent, Outlet, Scripts, createRootRoute, useLocation, redirect } from '@tanstack/react-router'
+import { HeadContent, Outlet, Scripts, createRootRoute, useLocation, Navigate } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Layout } from '../components/layout'
 import { FloatingChat } from '../components/FloatingChat'
-import { AuthProvider } from '../lib/auth'
+import { AuthProvider, useAuth } from '../lib/auth'
 
 import appCss from '../styles.css?url'
 
@@ -58,22 +58,17 @@ function RootComponent() {
 
 function AuthenticatedLayout() {
   const location = useLocation()
+  const { isAuthenticated } = useAuth()
   const isLoginPage = location.pathname === '/login'
 
-  // Check auth on protected routes
-  if (!isLoginPage) {
-    const stored = typeof window !== 'undefined' ? localStorage.getItem('freelunch_auth') : null
-    if (!stored) {
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login'
-      }
-      return null
-    }
-  }
-
-  // Login page - no layout
+  // Login page - no layout needed
   if (isLoginPage) {
     return <Outlet />
+  }
+
+  // Not authenticated - redirect to login
+  if (!isAuthenticated) {
+    return <Navigate to="/login" />
   }
 
   // Authenticated pages - with layout

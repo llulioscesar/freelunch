@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode } from 'react';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -9,34 +9,34 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<{ email: string } | null>(null);
+function getInitialAuth(): { isAuthenticated: boolean; user: { email: string } | null } {
+  if (typeof window === 'undefined') {
+    return { isAuthenticated: false, user: null };
+  }
+  const stored = localStorage.getItem('freelunch_auth');
+  if (stored) {
+    const parsed = JSON.parse(stored);
+    return { isAuthenticated: true, user: parsed };
+  }
+  return { isAuthenticated: false, user: null };
+}
 
-  useEffect(() => {
-    const stored = localStorage.getItem('freelunch_auth');
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      setIsAuthenticated(true);
-      setUser(parsed);
-    }
-  }, []);
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [authState, setAuthState] = useState(getInitialAuth);
 
   const login = (email: string) => {
     const userData = { email };
     localStorage.setItem('freelunch_auth', JSON.stringify(userData));
-    setIsAuthenticated(true);
-    setUser(userData);
+    setAuthState({ isAuthenticated: true, user: userData });
   };
 
   const logout = () => {
     localStorage.removeItem('freelunch_auth');
-    setIsAuthenticated(false);
-    setUser(null);
+    setAuthState({ isAuthenticated: false, user: null });
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated: authState.isAuthenticated, user: authState.user, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

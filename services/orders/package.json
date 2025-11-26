@@ -17,7 +17,6 @@
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
     "typecheck": "tsc --noEmit",
-    "verify": "bash scripts/verify-build.sh",
     "deploy": "vercel --prod",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
