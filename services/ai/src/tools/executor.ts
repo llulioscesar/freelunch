@@ -1,8 +1,16 @@
 /**
  * Tool executor - executes tools called by Gemini
  */
-import { CreateOrderParams, RequestPurchaseParams, ToolResult } from './definitions';
+import {
+  CreateOrderParams,
+  RequestPurchaseParams,
+  SearchOrdersParams,
+  GetOrderDetailsParams,
+  GetOrderHistoryParams,
+  ToolResult,
+} from './definitions';
 import { getWarehouseStats } from '../clients/warehouse';
+import { searchOrders, getOrderById, getOrderHistory } from '../clients/orders';
 
 const ORDERS_URL = process.env.ORDERS_URL || 'http://localhost:3002';
 const WAREHOUSE_URL = process.env.WAREHOUSE_URL || 'http://localhost:3001';
@@ -187,6 +195,121 @@ export async function executeGetAlerts(): Promise<ToolResult> {
   }
 }
 
+export async function executeSearchOrders(params: SearchOrdersParams): Promise<ToolResult> {
+  try {
+    const orders = await searchOrders(params);
+
+    if (orders.length === 0) {
+      return {
+        success: true,
+        data: {
+          count: 0,
+          orders: [],
+          message: params.customerName
+            ? `No se encontraron ordenes para "${params.customerName}"`
+            : 'No se encontraron ordenes con los filtros especificados',
+        },
+      };
+    }
+
+    return {
+      success: true,
+      data: {
+        count: orders.length,
+        orders: orders.map((o) => ({
+          id: o.id,
+          status: o.status,
+          customerName: o.customerName,
+          quantity: o.quantity,
+          createdAt: o.createdAt,
+        })),
+        message: `Se encontraron ${orders.length} orden(es)`,
+      },
+    };
+  } catch (error) {
+    console.error('Error executing searchOrders:', error);
+    return {
+      success: false,
+      error: 'Error al buscar ordenes',
+    };
+  }
+}
+
+export async function executeGetOrderDetails(params: GetOrderDetailsParams): Promise<ToolResult> {
+  try {
+    const order = await getOrderById(params.orderId);
+
+    if (!order) {
+      return {
+        success: false,
+        error: `No se encontro la orden con ID "${params.orderId}"`,
+      };
+    }
+
+    return {
+      success: true,
+      data: {
+        id: order.id,
+        status: order.status,
+        customerName: order.customerName,
+        quantity: order.quantity,
+        progress: order.progress,
+        items: order.items?.map((item) => ({
+          id: item.id,
+          status: item.status,
+          recipeName: item.recipeName || 'Sin receta',
+          failureReason: item.failureReason,
+        })),
+        createdAt: order.createdAt,
+      },
+    };
+  } catch (error) {
+    console.error('Error executing getOrderDetails:', error);
+    return {
+      success: false,
+      error: 'Error al obtener detalles de la orden',
+    };
+  }
+}
+
+export async function executeGetOrderHistory(params: GetOrderHistoryParams): Promise<ToolResult> {
+  try {
+    const history = await getOrderHistory(params.orderId);
+
+    if (history.length === 0) {
+      return {
+        success: true,
+        data: {
+          count: 0,
+          history: [],
+          message: 'No hay historial de cambios para esta orden',
+        },
+      };
+    }
+
+    return {
+      success: true,
+      data: {
+        count: history.length,
+        history: history.map((entry) => ({
+          fromStatus: entry.fromStatus,
+          toStatus: entry.toStatus,
+          changedAt: entry.changedAt,
+          recipeName: entry.recipeName,
+          reason: entry.reason,
+        })),
+        message: `La orden tiene ${history.length} cambio(s) de estado`,
+      },
+    };
+  } catch (error) {
+    console.error('Error executing getOrderHistory:', error);
+    return {
+      success: false,
+      error: 'Error al obtener historial de la orden',
+    };
+  }
+}
+
 export async function executeTool(name: string, args: Record<string, unknown>): Promise<ToolResult> {
   switch (name) {
     case 'createOrder': {
@@ -206,6 +329,26 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
     }
     case 'getAlerts': {
       return executeGetAlerts();
+    }
+    case 'searchOrders': {
+      const searchParams: SearchOrdersParams = {
+        customerName: typeof args.customerName === 'string' ? args.customerName : undefined,
+        status: typeof args.status === 'string' ? args.status : undefined,
+        limit: typeof args.limit === 'number' ? args.limit : 10,
+      };
+      return executeSearchOrders(searchParams);
+    }
+    case 'getOrderDetails': {
+      const detailsParams: GetOrderDetailsParams = {
+        orderId: typeof args.orderId === 'string' ? args.orderId : '',
+      };
+      return executeGetOrderDetails(detailsParams);
+    }
+    case 'getOrderHistory': {
+      const historyParams: GetOrderHistoryParams = {
+        orderId: typeof args.orderId === 'string' ? args.orderId : '',
+      };
+      return executeGetOrderHistory(historyParams);
     }
     default:
       return {

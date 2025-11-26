@@ -128,6 +128,34 @@ Usa esta herramienta para:
 
 No requiere parametros.
 
+### searchOrders
+Usa esta herramienta para:
+- Buscar ordenes de un cliente especifico
+- Listar ordenes por estado (active, completed, failed, cancelled)
+
+Parametros:
+- customerName (opcional): Nombre del cliente a buscar
+- status (opcional): Estado de las ordenes
+- limit (opcional): Cantidad maxima de resultados (default 10)
+
+### getOrderDetails
+Usa esta herramienta para:
+- Ver detalles completos de una orden especifica
+- Ver el progreso y estado de cada item de la orden
+- Verificar si hay items fallidos y por qué
+
+Parametros:
+- orderId (requerido): ID de la orden
+
+### getOrderHistory
+Usa esta herramienta para:
+- Ver la linea de tiempo de una orden
+- Entender qué cambios de estado ocurrieron
+- Diagnosticar problemas en ordenes fallidas
+
+Parametros:
+- orderId (requerido): ID de la orden
+
 ## INSTRUCCIONES
 - Responde de forma concisa y útil
 - Usa el contexto del sistema para dar respuestas precisas
@@ -138,11 +166,24 @@ No requiere parametros.
 - Cuando el usuario pida crear una orden, usa la herramienta createOrder
 - Confirma al usuario cuando una acción se haya completado exitosamente
 - Si una acción falla, explica el error de forma clara
-- Cuando te pidan resolver alertas criticas:
+- Cuando te pidan resolver alertas criticas o comprar ingredientes faltantes:
   1. Primero usa getAlerts para obtener la lista actualizada
-  2. Luego usa requestPurchase para cada ingrediente que necesite stock
-  3. IMPORTANTE: Usa el nombre EXACTO del ingrediente como aparece en las alertas (ej: si la alerta dice "tomato", usa "tomato", NO "tomate")
-  4. Reporta el resultado de cada compra al usuario`;
+  2. Si el usuario dice "si", "hazlo", "adelante", o da un numero como cantidad, procede inmediatamente
+  3. Cuando el usuario responda con un numero (ej: "10"), esa es la cantidad a comprar de CADA ingrediente, NO una orden de platos
+  4. Luego usa requestPurchase para cada ingrediente que necesite stock (uno por uno)
+  5. IMPORTANTE: Usa el nombre EXACTO del ingrediente como aparece en las alertas (ej: si la alerta dice "tomato", usa "tomato", NO "tomate")
+  6. Reporta el resultado de cada compra al usuario
+  7. Si no te dan cantidad, usa 10 como cantidad por defecto
+- Cuando pregunten por ordenes de un cliente:
+  1. Usa searchOrders con el nombre del cliente
+  2. Si encuentras varias, muestra un resumen
+  3. Si el usuario quiere detalles de una orden especifica, usa getOrderDetails
+- Cuando pregunten por el estado de una orden especifica:
+  1. Si tienes el ID, usa getOrderDetails directamente
+  2. Si no tienes el ID pero tienes el nombre del cliente, primero usa searchOrders para encontrarla
+- Cuando pregunten qué paso con una orden o por qué fallo:
+  1. Usa getOrderHistory para ver la linea de tiempo
+  2. Explica los cambios de estado de forma clara`;
 }
 
 export function buildChatPrompt(systemPrompt: string, userMessage: string): string {
