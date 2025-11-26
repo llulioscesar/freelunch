@@ -494,9 +494,13 @@ export class WarehouseResponsesConsumer {
         return;
       }
 
+      // XPENDING returns: [[messageId, consumerName, idleTime, deliveryCount], ...]
       const staleMessageIds = pending
-        .filter((msg: any) => msg.idleTime > minIdleTime)
-        .map((msg: any) => msg.id);
+        .filter((msg: any) => {
+          const idleTime = Array.isArray(msg) ? msg[2] : msg.idleTime;
+          return idleTime > minIdleTime;
+        })
+        .map((msg: any) => (Array.isArray(msg) ? msg[0] : msg.id));
 
       if (staleMessageIds.length === 0) {
         return;
