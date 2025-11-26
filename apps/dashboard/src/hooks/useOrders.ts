@@ -25,12 +25,12 @@ export function useStats() {
 }
 
 /**
- * Get all orders
+ * Get all orders with pagination
  */
-export function useOrders() {
+export function useOrders(page: number = 1, limit: number = 10) {
   return useQuery({
-    queryKey: orderKeys.lists(),
-    queryFn: () => ordersService.getAll(),
+    queryKey: orderKeys.list({ page, limit }),
+    queryFn: () => ordersService.getAll(page, limit),
     refetchInterval: 5_000,
   });
 }
@@ -43,6 +43,18 @@ export function useOrder(id: string) {
     queryKey: orderKeys.detail(id),
     queryFn: () => ordersService.getById(id),
     enabled: !!id,
+    refetchInterval: 5_000,
+  });
+}
+
+/**
+ * Get status history for an order
+ */
+export function useOrderHistory(orderId: string) {
+  return useQuery({
+    queryKey: [...orderKeys.detail(orderId), 'history'],
+    queryFn: () => ordersService.getHistory(orderId),
+    enabled: !!orderId,
   });
 }
 

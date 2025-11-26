@@ -26,10 +26,7 @@ export const warehouseService = {
   /**
    * Get purchase history from farmers market
    */
-  async getPurchases(limit?: number): Promise<PurchasesResponse> {
-    const url = limit 
-      ? `${BASE_URL}/api/purchases?limit=${limit}` 
-      : `${BASE_URL}/api/purchases`;
-    return apiFetch<PurchasesResponse>(url);
+  async getPurchases(page: number = 1, limit: number = 10): Promise<PurchasesResponse> {
+    return apiFetch<PurchasesResponse>(`${BASE_URL}/api/purchases?page=${page}&limit=${limit}`);
   },
 };

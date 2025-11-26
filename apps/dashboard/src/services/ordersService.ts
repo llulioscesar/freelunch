@@ -2,7 +2,7 @@
  * Orders Service - API Client
  */
 import { apiConfig, apiFetch } from './api';
-import type { StatsResponse, OrdersResponse, Order } from '../types/api';
+import type { StatsResponse, OrdersResponse, Order, StatusHistoryEntry } from '../types/api';
 
 const BASE_URL = apiConfig.urls.orders;
 
@@ -15,10 +15,10 @@ export const ordersService = {
   },
 
   /**
-   * Get all orders
+   * Get all orders with pagination
    */
-  async getAll(): Promise<OrdersResponse> {
-    return apiFetch<OrdersResponse>(`${BASE_URL}/api/list`);
+  async getAll(page: number = 1, limit: number = 10): Promise<OrdersResponse> {
+    return apiFetch<OrdersResponse>(`${BASE_URL}/api/list?page=${page}&limit=${limit}`);
   },
 
   /**
@@ -26,6 +26,13 @@ export const ordersService = {
    */
   async getById(id: string): Promise<{ success: boolean; order: Order }> {
     return apiFetch(`${BASE_URL}/api/status?id=${id}`);
+  },
+
+  /**
+   * Get status history for an order
+   */
+  async getHistory(orderId: string): Promise<{ success: boolean; history: StatusHistoryEntry[] }> {
+    return apiFetch(`${BASE_URL}/api/history?orderId=${orderId}`);
   },
 
   /**
