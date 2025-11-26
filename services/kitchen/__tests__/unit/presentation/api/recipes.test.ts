@@ -24,6 +24,10 @@ jest.mock('../../../../src/infrastructure/metrics/MetricsMiddleware', () => ({
   withMetrics: (handler: any) => handler,
 }));
 
+jest.mock('../../../../src/infrastructure/http/cors', () => ({
+  withCors: (handler: any) => handler,
+}));
+
 import handler from '../../../../src/presentation/api/recipes';
 
 describe('Recipes API', () => {
