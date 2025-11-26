@@ -29,6 +29,10 @@ jest.mock('../../../../src/infrastructure/metrics/MetricsMiddleware', () => ({
   withMetrics: (handler: any) => handler,
 }));
 
+jest.mock('../../../../src/infrastructure/http/cors', () => ({
+  withCors: (handler: any) => handler,
+}));
+
 import { dependencies } from '../../../../src/infrastructure/config/dependencies';
 
 // Import handler after mocks
