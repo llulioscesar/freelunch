@@ -7,12 +7,16 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
 import { logger } from '../../logging/Logger.js';
 
-// PostgreSQL Pool configuration
+// PostgreSQL Pool configuration optimized for serverless
 const poolConfig: pg.PoolConfig = {
   connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false, // Aiven uses valid certs, no need for CA
   },
+  // Serverless optimizations - limit connections per instance
+  max: 1, // Maximum 1 connection per serverless instance
+  idleTimeoutMillis: 10000, // Close idle connections after 10s
+  connectionTimeoutMillis: 5000, // Fail fast if can't connect
 };
 
 const pool = new pg.Pool(poolConfig);
