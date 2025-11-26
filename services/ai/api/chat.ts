@@ -2,15 +2,11 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { buildSystemContext } from '../src/context';
 import { buildChatSystemPrompt, buildChatPrompt } from '../src/prompts/chat';
 import { generateContent } from '../src/clients/gemini';
+import { withCors } from '../src/middleware/cors';
 import { ChatRequest, ChatResponse } from '../src/types';
 import { randomUUID } from 'crypto';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS preflight
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
+async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({
       success: false,
@@ -61,3 +57,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 }
+
+export default withCors(handler);

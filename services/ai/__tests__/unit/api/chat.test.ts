@@ -28,6 +28,7 @@ describe('Chat API', () => {
       status: statusMock,
       json: jsonMock,
       end: endMock,
+      setHeader: jest.fn(),
     };
   });
 

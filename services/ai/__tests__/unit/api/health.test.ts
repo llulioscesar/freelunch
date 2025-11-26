@@ -18,6 +18,7 @@ describe('Health API', () => {
       status: statusMock,
       json: jsonMock,
       end: endMock,
+      setHeader: jest.fn(),
     };
     process.env = { ...originalEnv };
   });

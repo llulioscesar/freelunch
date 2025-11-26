@@ -1,10 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { withCors } from '../src/middleware/cors';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
+async function handler(req: VercelRequest, res: VercelResponse) {
   const hasGeminiKey = !!process.env.GEMINI_API_KEY;
 
   return res.status(200).json({
@@ -19,3 +16,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     },
   });
 }
+
+export default withCors(handler);
