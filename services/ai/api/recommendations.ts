@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { buildSystemContext } from '../src/context';
 import { buildRecommendationsPrompt } from '../src/prompts/recommendations';
 import { generateJSON } from '../src/clients/gemini';
+import { withCors } from '../src/middleware/cors';
 import { RecommendationsResponse, RecipeRecommendation, CriticalAlert } from '../src/types';
 
 interface GeminiRecommendationsResponse {
@@ -9,12 +10,7 @@ interface GeminiRecommendationsResponse {
   criticalAlerts: CriticalAlert[];
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS preflight
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
+async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({
       success: false,
@@ -66,3 +62,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 }
+
+export default withCors(handler);

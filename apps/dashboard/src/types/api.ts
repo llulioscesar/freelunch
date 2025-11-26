@@ -152,6 +152,37 @@ export interface RecipesResponse {
   recipes: Recipe[];
 }
 
+// AI Service Types
+export interface RecipeRecommendation {
+  recipe: string;
+  viability: number;
+  reason: string;
+}
+
+export interface CriticalAlert {
+  ingredient: string;
+  urgency: 'high' | 'medium' | 'low';
+  suggestion: string;
+}
+
+export interface AIRecommendations {
+  recipeRanking: RecipeRecommendation[];
+  criticalAlerts: CriticalAlert[];
+  generatedAt: string;
+}
+
+export interface AIRecommendationsResponse {
+  success: boolean;
+  data: AIRecommendations;
+  meta?: {
+    duration: number;
+    contextSize: {
+      inventory: number;
+      recipes: number;
+    };
+  };
+}
+
 export interface InventoryData {
   items: InventoryItem[];
   totalItems: number;

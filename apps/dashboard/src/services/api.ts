@@ -7,6 +7,7 @@ const API_URLS = {
   orders: import.meta.env.VITE_ORDERS_API_URL || 'https://freelunch-orders-stg.juliocaicedo.com',
   kitchen: import.meta.env.VITE_KITCHEN_API_URL || 'https://freelunch-kitchen-stg.juliocaicedo.com',
   warehouse: import.meta.env.VITE_WAREHOUSE_API_URL || 'https://freelunch-warehouse-stg.juliocaicedo.com',
+  ai: import.meta.env.VITE_AI_API_URL || 'https://freelunch-ai-stg.juliocaicedo.com',
 };
 
 // Vercel Protection Bypass for preview environments
