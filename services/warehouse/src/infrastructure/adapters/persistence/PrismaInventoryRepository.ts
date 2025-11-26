@@ -121,6 +121,31 @@ export class PrismaInventoryRepository implements InventoryRepository {
     };
   }
 
+  async getStats(lowStockThreshold = 2): Promise<{
+    total: number;
+    outOfStock: number;
+    lowStock: number;
+    lowStockItems: { ingredientName: string; quantity: number }[];
+  }> {
+    const allItems = await this.prisma.inventoryItem.findMany();
+
+    const outOfStock = allItems.filter((i) => i.quantity === 0).length;
+    const lowStockItems = allItems
+      .filter((i) => i.quantity > 0 && i.quantity <= lowStockThreshold)
+      .map((i) => ({
+        ingredientName: i.ingredientName,
+        quantity: i.quantity,
+      }))
+      .sort((a, b) => a.quantity - b.quantity);
+
+    return {
+      total: allItems.length,
+      outOfStock,
+      lowStock: lowStockItems.length,
+      lowStockItems,
+    };
+  }
+
   private toDomain(record: {
     id: string;
     ingredientName: string;

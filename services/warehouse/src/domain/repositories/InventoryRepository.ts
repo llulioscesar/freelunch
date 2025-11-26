@@ -43,4 +43,14 @@ export interface InventoryRepository {
   checkAvailability(
     requirements: Map<string, number>
   ): Promise<{ available: boolean; missing: Map<string, number> }>;
+
+  /**
+   * Get inventory stats (total, out of stock, low stock)
+   */
+  getStats(lowStockThreshold?: number): Promise<{
+    total: number;
+    outOfStock: number;
+    lowStock: number;
+    lowStockItems: { ingredientName: string; quantity: number }[];
+  }>;
 }

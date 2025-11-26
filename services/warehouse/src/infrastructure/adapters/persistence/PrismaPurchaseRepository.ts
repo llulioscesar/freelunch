@@ -148,6 +148,60 @@ export class PrismaPurchaseRepository implements PurchaseRepository {
     return result._sum.obtainedQuantity ?? 0;
   }
 
+  async getFailedByIngredient(limit = 10): Promise<{
+    ingredientName: string;
+    failedCount: number;
+    lastError: string | null;
+  }[]> {
+    const failedByIngredient = await this.prisma.purchase.groupBy({
+      by: ['ingredientName'],
+      _count: { ingredientName: true },
+      where: {
+        status: 'failed',
+      },
+      orderBy: {
+        _count: { ingredientName: 'desc' },
+      },
+      take: limit,
+    });
+
+    // Get last error for each failed ingredient
+    const results = await Promise.all(
+      failedByIngredient.map(async (f: { ingredientName: string; _count: { ingredientName: number } }) => {
+        const lastFailed = await this.prisma.purchase.findFirst({
+          where: {
+            ingredientName: f.ingredientName,
+            status: 'failed',
+          },
+          orderBy: { createdAt: 'desc' },
+          select: { errorMessage: true },
+        });
+
+        return {
+          ingredientName: f.ingredientName,
+          failedCount: f._count.ingredientName,
+          lastError: lastFailed?.errorMessage ?? null,
+        };
+      })
+    );
+
+    return results;
+  }
+
+  async getCountsByStatus(): Promise<Record<string, number>> {
+    const counts = await this.prisma.purchase.groupBy({
+      by: ['status'],
+      _count: { status: true },
+    });
+
+    const result: Record<string, number> = {};
+    counts.forEach((c: { status: string; _count: { status: number } }) => {
+      result[c.status] = c._count.status;
+    });
+
+    return result;
+  }
+
   private toDomain(record: {
     id: string;
     ingredientName: string;

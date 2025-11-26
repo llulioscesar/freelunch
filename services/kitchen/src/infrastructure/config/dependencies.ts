@@ -21,6 +21,7 @@ import { AssignRecipeUseCase } from '../../application/use-cases/AssignRecipeUse
 import { GetRecipesUseCase } from '../../application/use-cases/GetRecipesUseCase';
 import { ListPlatesUseCase } from '../../application/use-cases/ListPlatesUseCase';
 import { RequestIngredientsUseCase } from '../../application/use-cases/RequestIngredientsUseCase';
+import { GetKitchenStatsUseCase } from '../../application/use-cases/GetKitchenStatsUseCase';
 import { OrderEventsConsumer } from '../consumers/OrderEventsConsumer';
 import { WarehouseResponsesConsumer } from '../consumers/WarehouseResponsesConsumer';
 
@@ -40,6 +41,7 @@ export interface Dependencies {
   getRecipesUseCase: GetRecipesUseCase;
   listPlatesUseCase: ListPlatesUseCase;
   requestIngredientsUseCase: RequestIngredientsUseCase;
+  getKitchenStatsUseCase: GetKitchenStatsUseCase;
 
   // Consumers
   orderEventsConsumer: OrderEventsConsumer;
@@ -95,6 +97,11 @@ export class DependencyContainer {
       eventPublisher
     );
 
+    const getKitchenStatsUseCase = new GetKitchenStatsUseCase(
+      plateRepository,
+      recipeRepository
+    );
+
     // Consumers
     const orderEventsConsumer = new OrderEventsConsumer(
       processOrderUseCase,
@@ -117,6 +124,7 @@ export class DependencyContainer {
       getRecipesUseCase,
       listPlatesUseCase,
       requestIngredientsUseCase,
+      getKitchenStatsUseCase,
       orderEventsConsumer,
       warehouseResponsesConsumer,
     };
