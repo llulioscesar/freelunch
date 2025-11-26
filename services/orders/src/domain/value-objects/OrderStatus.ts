@@ -45,10 +45,12 @@ export class OrderStatus {
     const transitions: Record<OrderStatusEnum, OrderStatusEnum[]> = {
       [OrderStatusEnum.PENDING]: [
         OrderStatusEnum.PREPARING,
+        OrderStatusEnum.FAILED,
         OrderStatusEnum.CANCELLED,
       ],
       [OrderStatusEnum.PREPARING]: [
         OrderStatusEnum.INGREDIENTS_REQUESTED,
+        OrderStatusEnum.READY,
         OrderStatusEnum.FAILED,
         OrderStatusEnum.CANCELLED,
       ],

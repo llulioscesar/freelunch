@@ -241,7 +241,10 @@ export class Order {
   }
 
   getCompletedItems(): number {
-    return this.items.filter(item => item.isCompleted()).length;
+    // Items are considered "completed" for progress when they're READY, DELIVERED, or FAILED
+    return this.items.filter(item =>
+      item.isReady() || item.isDelivered() || item.isFailed()
+    ).length;
   }
 
   getPendingItems(): number {
@@ -258,6 +261,20 @@ export class Order {
 
   isFullyCompleted(): boolean {
     return this.items.every(item => item.isCompleted());
+  }
+
+  areAllItemsReady(): boolean {
+    return this.items.every(item => item.isReady() || item.isDelivered());
+  }
+
+  areAllItemsDelivered(): boolean {
+    return this.items.every(item => item.isDelivered());
+  }
+
+  hasAnyItemInProgress(): boolean {
+    return this.items.some(item =>
+      !item.isPending() && !item.isCompleted() && !item.isReady()
+    );
   }
 
   hasFailedItems(): boolean {

@@ -105,8 +105,9 @@ export class OrderItem {
   }
 
   markAsIngredientsRequested(): void {
-    if (this.status !== OrderItemStatus.PREPARING) {
-      throw new Error('Item must be preparing to request ingredients');
+    // Allow transition from ASSIGNED or PREPARING to INGREDIENTS_REQUESTED
+    if (this.status !== OrderItemStatus.ASSIGNED && this.status !== OrderItemStatus.PREPARING) {
+      throw new Error('Item must be assigned or preparing to request ingredients');
     }
 
     this.status = OrderItemStatus.INGREDIENTS_REQUESTED;

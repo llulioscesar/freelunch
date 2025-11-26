@@ -11,6 +11,7 @@
  * - DISH_FAILED: Dish preparation failed
  */
 import { OrderRepository } from '../../domain/repositories/OrderRepository';
+import { StatusHistoryRepository } from '../../domain/repositories/StatusHistoryRepository';
 import { OrderId } from '../../domain/value-objects/OrderId';
 import { OrderItemId } from '../../domain/value-objects/OrderItemId';
 import { OrderItemStatus } from '../../domain/entities/OrderItem';
@@ -48,7 +49,8 @@ export interface UpdateOrderItemStatusResponseDTO {
 export class UpdateOrderItemStatusUseCase {
   constructor(
     private readonly orderRepository: OrderRepository,
-    private readonly eventPublisher: EventPublisher
+    private readonly eventPublisher: EventPublisher,
+    private readonly statusHistoryRepository?: StatusHistoryRepository
   ) {}
 
   async execute(dto: UpdateOrderItemStatusDTO): Promise<UpdateOrderItemStatusResponseDTO> {
@@ -89,6 +91,17 @@ export class UpdateOrderItemStatusUseCase {
         };
       }
 
+      // Capture previous status for history
+      const previousStatus = item.getStatus();
+
+      logger.debug('Found order item, current state', {
+        itemId: dto.itemId,
+        currentStatus: previousStatus,
+        targetStatus: dto.status,
+        recipeId: item.getRecipeId(),
+        recipeName: item.getRecipeName(),
+      });
+
       // 3. Update item status based on event
       switch (dto.status) {
         case OrderItemStatus.ASSIGNED:
@@ -121,6 +134,31 @@ export class UpdateOrderItemStatusUseCase {
             recipeId: item.getRecipeId(),
             preparationTime: item.getPreparationTime(),
           });
+
+          // Auto-deliver: In donation event, dishes are delivered immediately when ready
+          item.markAsDelivered();
+          logger.info('Dish auto-delivered to customer', {
+            itemId: dto.itemId,
+            recipeId: item.getRecipeId(),
+          });
+
+          // Record the READY → DELIVERED transition in history
+          if (this.statusHistoryRepository) {
+            try {
+              await this.statusHistoryRepository.record({
+                orderItemId: dto.itemId,
+                fromStatus: OrderItemStatus.READY,
+                toStatus: OrderItemStatus.DELIVERED,
+                recipeId: item.getRecipeId(),
+                recipeName: item.getRecipeName(),
+              });
+            } catch (historyError) {
+              logger.warn('Failed to record auto-delivery history', {
+                itemId: dto.itemId,
+                error: (historyError as Error).message,
+              });
+            }
+          }
           break;
 
         case OrderItemStatus.DELIVERED:
@@ -143,10 +181,35 @@ export class UpdateOrderItemStatusUseCase {
           };
       }
 
-      // 4. Check if order should be auto-completed
+      // 4. Record status change in history
+      if (this.statusHistoryRepository && previousStatus !== dto.status) {
+        try {
+          await this.statusHistoryRepository.record({
+            orderItemId: dto.itemId,
+            fromStatus: previousStatus,
+            toStatus: dto.status,
+            recipeId: dto.recipeId || item.getRecipeId(),
+            recipeName: dto.recipeName || item.getRecipeName(),
+            reason: dto.failureReason,
+          });
+          logger.debug('Status history recorded', {
+            itemId: dto.itemId,
+            fromStatus: previousStatus,
+            toStatus: dto.status,
+          });
+        } catch (historyError) {
+          // Don't fail the main operation if history recording fails
+          logger.warn('Failed to record status history', {
+            itemId: dto.itemId,
+            error: (historyError as Error).message,
+          });
+        }
+      }
+
+      // 5. Check if order should be auto-completed
       this.checkAndCompleteOrder(order);
 
-      // 5. Save updated order
+      // 6. Save updated order
       await this.orderRepository.update(order);
 
       logger.logRepositoryOperation('update', 'Order', orderId.getValue());
@@ -221,26 +284,65 @@ export class UpdateOrderItemStatusUseCase {
   }
 
   /**
-   * Auto-complete order when all items are ready or failed
+   * Auto-update order status based on item states
+   *
+   * Order status progression:
+   * - PENDING → PREPARING: When any item starts (assigned/cooking)
+   * - PREPARING → READY: When all items are ready
+   * - READY → DELIVERED: When all items are delivered
+   * - Any → FAILED: When items fail
    */
   private checkAndCompleteOrder(order: any): void {
-    if (order.isFullyCompleted() && !order.isCompleted()) {
-      if (order.hasFailedItems()) {
-        // Some items failed - mark order as failed
-        order.markAsFailed('Some dishes failed to prepare');
-        logger.info('Order marked as failed (some items failed)', {
+    const currentStatus = order.getStatus().getValue();
+
+    // Check for failures first
+    if (order.hasFailedItems() && !order.isCompleted()) {
+      order.markAsFailed('Some dishes failed to prepare');
+      logger.info('Order marked as failed (some items failed)', {
+        orderId: order.getId().getValue(),
+        failedItems: order.getFailedItems(),
+        totalItems: order.getTotalItems(),
+      });
+      return;
+    }
+
+    // All items delivered → Order DELIVERED
+    if (order.areAllItemsDelivered() && currentStatus !== 'DELIVERED') {
+      // State machine requires PREPARING → READY → DELIVERED
+      // So if we're in PREPARING, transition through READY first
+      if (currentStatus === 'PREPARING') {
+        order.markAsReady();
+        logger.info('Order marked as ready (transitioning to delivered)', {
           orderId: order.getId().getValue(),
-          failedItems: order.getFailedItems(),
-          totalItems: order.getTotalItems(),
-        });
-      } else {
-        // All items delivered - mark order as completed
-        order.markAsDelivered();
-        logger.info('Order auto-completed (all items ready)', {
-          orderId: order.getId().getValue(),
-          totalItems: order.getTotalItems(),
         });
       }
+      order.markAsDelivered();
+      logger.info('Order marked as delivered (all items delivered)', {
+        orderId: order.getId().getValue(),
+        totalItems: order.getTotalItems(),
+      });
+      return;
+    }
+
+    // All items ready → Order READY
+    if (order.areAllItemsReady() && currentStatus !== 'READY' && currentStatus !== 'DELIVERED') {
+      order.markAsReady();
+      logger.info('Order marked as ready (all items ready)', {
+        orderId: order.getId().getValue(),
+        totalItems: order.getTotalItems(),
+        readyItems: order.getReadyItems(),
+      });
+      return;
+    }
+
+    // Any item in progress → Order PREPARING
+    if (order.hasAnyItemInProgress() && currentStatus === 'PENDING') {
+      order.markAsPreparing();
+      logger.info('Order marked as preparing (items in progress)', {
+        orderId: order.getId().getValue(),
+        pendingItems: order.getPendingItems(),
+        totalItems: order.getTotalItems(),
+      });
     }
   }
 }

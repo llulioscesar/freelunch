@@ -83,11 +83,20 @@ describe('OrderItem Entity', () => {
       expect(item.getStatus()).toBe(OrderItemStatus.INGREDIENTS_REQUESTED);
     });
 
-    it('should throw error when requesting ingredients from non-preparing status', () => {
+    it('should allow requesting ingredients from ASSIGNED status', () => {
       const item = new OrderItem(itemId, orderId);
       item.assignRecipe('RCP-001', 'Burger');
 
-      expect(() => item.markAsIngredientsRequested()).toThrow('Item must be preparing to request ingredients');
+      // Kitchen can transition directly from ASSIGNED to INGREDIENTS_REQUESTED
+      item.markAsIngredientsRequested();
+
+      expect(item.getStatus()).toBe(OrderItemStatus.INGREDIENTS_REQUESTED);
+    });
+
+    it('should throw error when requesting ingredients from PENDING status', () => {
+      const item = new OrderItem(itemId, orderId);
+
+      expect(() => item.markAsIngredientsRequested()).toThrow('Item must be assigned or preparing to request ingredients');
     });
 
     it('should transition from INGREDIENTS_REQUESTED to COOKING', () => {

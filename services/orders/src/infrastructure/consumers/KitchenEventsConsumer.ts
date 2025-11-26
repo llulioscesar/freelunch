@@ -33,7 +33,7 @@ export interface KitchenEventPayload {
 
 export class KitchenEventsConsumer {
   private redis: Redis;
-  private streamName = 'stream:kitchen:responses';
+  private streamName = 'stream:kitchen:events';
   private consumerGroup = 'orders-service';
   private consumerId: string;
   private isRunning = false;
@@ -48,17 +48,17 @@ export class KitchenEventsConsumer {
   }
 
   /**
-   * Initialize consumer group (idempotent)
+   * Initialize consumer group (idempotent) - Upstash syntax
    */
   async initialize(): Promise<void> {
     try {
-      await this.redis.xgroup(
-        'CREATE',
-        this.streamName,
-        this.consumerGroup,
-        '$', // Start from new messages
-        'MKSTREAM' // Create stream if doesn't exist
-      );
+      // Create consumer group with correct Upstash syntax
+      await this.redis.xgroup(this.streamName, {
+        type: 'CREATE',
+        group: this.consumerGroup,
+        id: '$', // Start from new messages
+        options: { MKSTREAM: true }, // Create stream if doesn't exist
+      });
 
       logger.info('Consumer group created', {
         streamName: this.streamName,
@@ -112,27 +112,23 @@ export class KitchenEventsConsumer {
   }
 
   /**
-   * Main consumption loop
+   * Main consumption loop - Upstash XREADGROUP syntax
    */
   private async consumeLoop(): Promise<void> {
     while (this.isRunning) {
       try {
-        // Read new messages from stream
+        // Read new messages using Upstash XREADGROUP syntax
         const messages = await this.redis.xreadgroup(
-          'GROUP',
           this.consumerGroup,
           this.consumerId,
-          'BLOCK',
-          5000, // Block for 5 seconds waiting for messages
-          'COUNT',
-          10, // Process up to 10 messages at a time
-          'STREAMS',
           this.streamName,
-          '>' // Read only new messages
+          '>', // Read only new messages
+          { count: 10 }
         );
 
         if (!messages || messages.length === 0) {
-          continue; // No new messages, continue loop
+          await this.sleep(1000);
+          continue;
         }
 
         // Process messages
@@ -145,8 +141,6 @@ export class KitchenEventsConsumer {
         logger.error('Error in consume loop', error as Error, {
           consumerId: this.consumerId,
         });
-
-        // Wait a bit before retrying
         await this.sleep(this.pollInterval);
       }
     }
@@ -183,6 +177,15 @@ export class KitchenEventsConsumer {
       }
 
       // Execute use case to update order item
+      logger.debug('Executing UpdateOrderItemStatusUseCase', {
+        messageId,
+        orderId: payload.orderId,
+        itemId: payload.itemId,
+        targetStatus: status,
+        recipeId: payload.recipeId,
+        recipeName: payload.recipeName,
+      });
+
       const result = await this.updateOrderItemUseCase.execute({
         orderId: payload.orderId,
         itemId: payload.itemId,
@@ -197,10 +200,29 @@ export class KitchenEventsConsumer {
           messageId,
           orderId: payload.orderId,
           itemId: payload.itemId,
+          targetStatus: status,
+          error: result.error,
         });
-        // Don't ACK failed messages - they'll be retried
+
+        // ACK messages for non-existent orders to avoid blocking the stream
+        if (result.error === 'Order not found') {
+          logger.warn('ACKing event for non-existent order (stale event)', {
+            messageId,
+            orderId: payload.orderId,
+          });
+          await this.ackMessage(messageId);
+          return;
+        }
+
+        // Don't ACK other failures - they'll be retried
         return;
       }
+
+      logger.debug('UpdateOrderItemStatusUseCase executed successfully', {
+        messageId,
+        itemId: payload.itemId,
+        currentStatus: result.item?.status,
+      });
 
       // ACK message after successful processing
       await this.ackMessage(messageId);
@@ -264,8 +286,26 @@ export class KitchenEventsConsumer {
 
     // Parse nested JSON if needed
     if (payload.payload) {
-      const parsed = JSON.parse(payload.payload);
-      Object.assign(payload, parsed);
+      // payload.payload can be string or already parsed object
+      let parsed;
+      if (typeof payload.payload === 'string') {
+        parsed = JSON.parse(payload.payload);
+      } else {
+        parsed = payload.payload;
+      }
+      // Standard format: { data: { ... } }
+      const eventData = parsed.data || parsed;
+
+      // Map Kitchen event format to expected format
+      return {
+        event: payload.eventType || eventData.eventName || payload.event,
+        orderId: eventData.orderId,
+        itemId: eventData.orderItemId, // Kitchen uses orderItemId
+        recipeId: eventData.recipeId,
+        recipeName: eventData.recipeName,
+        reason: eventData.reason,
+        timestamp: payload.occurredOn || eventData.occurredOn || new Date().toISOString(),
+      } as KitchenEventPayload;
     }
 
     return payload as KitchenEventPayload;
@@ -276,13 +316,21 @@ export class KitchenEventsConsumer {
    */
   private mapEventToStatus(eventName: string): OrderItemStatus | null {
     const mapping: Record<string, OrderItemStatus> = {
+      // Current Kitchen event names (kitchen.*)
+      'kitchen.plate.assigned': OrderItemStatus.ASSIGNED,
+      'kitchen.ingredients.requested': OrderItemStatus.INGREDIENTS_REQUESTED,
+      'kitchen.plate.cooking': OrderItemStatus.COOKING,
+      'kitchen.plate.ready': OrderItemStatus.READY,
+      'kitchen.plate.failed': OrderItemStatus.FAILED,
+
+      // Legacy event names (for backward compatibility)
       RECIPE_ASSIGNED: OrderItemStatus.ASSIGNED,
-      RECIPE_SELECTED: OrderItemStatus.ASSIGNED, // Alias
+      RECIPE_SELECTED: OrderItemStatus.ASSIGNED,
       DISH_PREPARING: OrderItemStatus.PREPARING,
       INGREDIENTS_REQUESTED: OrderItemStatus.INGREDIENTS_REQUESTED,
       COOKING: OrderItemStatus.COOKING,
       DISH_PREPARED: OrderItemStatus.READY,
-      DISH_READY: OrderItemStatus.READY, // Alias
+      DISH_READY: OrderItemStatus.READY,
       DISH_FAILED: OrderItemStatus.FAILED,
     };
 
@@ -339,9 +387,13 @@ export class KitchenEventsConsumer {
         return;
       }
 
+      // XPENDING returns: [[messageId, consumerName, idleTime, deliveryCount], ...]
       const staleMessageIds = pending
-        .filter((msg: any) => msg.idleTime > minIdleTime)
-        .map((msg: any) => msg.id);
+        .filter((msg: any) => {
+          const idleTime = Array.isArray(msg) ? msg[2] : msg.idleTime;
+          return idleTime > minIdleTime;
+        })
+        .map((msg: any) => (Array.isArray(msg) ? msg[0] : msg.id));
 
       if (staleMessageIds.length === 0) {
         return;
@@ -363,6 +415,93 @@ export class KitchenEventsConsumer {
       }
     } catch (error) {
       logger.error('Failed to claim stale messages', error as Error);
+    }
+  }
+
+  /**
+   * Process a batch of messages (for serverless cron) - Upstash syntax
+   * Returns the number of messages processed
+   */
+  async processBatch(maxMessages: number = 10): Promise<number> {
+    let processedCount = 0;
+
+    try {
+      // STEP 1: Process pending messages first (retry failed ones)
+      const pendingMessages = await this.redis.xreadgroup(
+        this.consumerGroup,
+        this.consumerId,
+        this.streamName,
+        '0', // Read pending messages for this consumer
+        { count: maxMessages }
+      );
+
+      if (pendingMessages && pendingMessages.length > 0) {
+        for (const [streamName, streamMessages] of pendingMessages) {
+          for (const [messageId, fields] of streamMessages) {
+            try {
+              await this.processMessage(messageId as string, fields);
+              processedCount++;
+            } catch (error) {
+              logger.error('Failed to process pending message', error as Error, {
+                messageId,
+                streamName,
+              });
+            }
+          }
+        }
+
+        logger.info('Pending messages processed', {
+          count: processedCount,
+          consumerId: this.consumerId,
+        });
+      }
+
+      // STEP 2: Process new messages
+      const remainingSlots = maxMessages - processedCount;
+      if (remainingSlots <= 0) {
+        return processedCount;
+      }
+
+      const newMessages = await this.redis.xreadgroup(
+        this.consumerGroup,
+        this.consumerId,
+        this.streamName,
+        '>', // Only new messages
+        { count: remainingSlots }
+      );
+
+      if (!newMessages || newMessages.length === 0) {
+        if (processedCount === 0) {
+          logger.debug('No messages to process');
+        }
+        return processedCount;
+      }
+
+      // Process each new message
+      for (const [streamName, streamMessages] of newMessages) {
+        for (const [messageId, fields] of streamMessages) {
+          try {
+            await this.processMessage(messageId as string, fields);
+            processedCount++;
+          } catch (error) {
+            logger.error('Failed to process message in batch', error as Error, {
+              messageId,
+              streamName,
+            });
+            // Continue processing other messages even if one fails
+          }
+        }
+      }
+
+      logger.info('Batch processing completed', {
+        processedCount,
+        consumerId: this.consumerId,
+      });
+
+      return processedCount;
+    } catch (error) {
+      logger.error('Batch processing failed', error as Error);
+      return processedCount;
     }
   }
 

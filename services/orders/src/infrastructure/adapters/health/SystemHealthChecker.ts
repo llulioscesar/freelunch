@@ -118,9 +118,6 @@ export class SystemHealthChecker implements HealthChecker {
       const optionalEnvVars = [
         'REDIS_URL',
         'REDIS_TOKEN',
-        'KITCHEN_SERVICE_URL',
-        'WAREHOUSE_SERVICE_URL',
-        'MARKET_SERVICE_URL',
       ];
 
       const missingRequired = requiredEnvVars.filter(
@@ -163,11 +160,6 @@ export class SystemHealthChecker implements HealthChecker {
           configured: {
             database: !!process.env.DATABASE_URL,
             redis: RedisClient.isConfigured(),
-            services: {
-              kitchen: !!process.env.KITCHEN_SERVICE_URL,
-              warehouse: !!process.env.WAREHOUSE_SERVICE_URL,
-              market: !!process.env.MARKET_SERVICE_URL,
-            },
           },
         },
       };

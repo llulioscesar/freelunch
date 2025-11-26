@@ -9,10 +9,8 @@ Sistema distribuido basado en arquitectura serverless para automatizar la gesti�
 - [Arquitectura](#-arquitectura)
 - [Stack Tecnológico](#-stack-tecnológico)
 - [Estructura del Proyecto](#-estructura-del-proyecto)
+- [Aplicaciones](#️-aplicaciones)
 - [Servicios](#-servicios)
-- [Instalación y Configuración](#-instalación-y-configuración)
-- [Despliegue](#-despliegue)
-- [API Endpoints](#-api-endpoints)
 - [Sistema de Eventos](#-sistema-de-eventos)
 - [Funcionalidades IA](#-funcionalidades-ia)
 - [Demo](#-demo)
@@ -28,46 +26,54 @@ Un restaurante necesita automatizar su proceso de preparación de alimentos dura
 
 ## 💡 Solución Propuesta
 
-Sistema distribuido con arquitectura **serverless event-driven** que:
+Sistema distribuido con arquitectura **serverless event-driven** desplegado en **Vercel** con inteligencia artificial powered by **Google Gemini**:
+
+### Arquitectura Serverless (Vercel)
+- **Escalado automático** según demanda sin administrar servidores
+- **Edge Functions** para baja latencia global
+- **Despliegue continuo** integrado con GitHub
+- **Base de datos serverless** con Neon (PostgreSQL) y Upstash (Redis)
+
+### Inteligencia Artificial (Google Gemini)
+- **Chat conversacional** para interactuar con el sistema en lenguaje natural
+- **Function Calling** para ejecutar acciones: crear órdenes, comprar ingredientes, consultar estado
+- **Recomendaciones inteligentes** basadas en inventario y demanda
+- **Resolución automática** de alertas de stock bajo
+
+### Capacidades del Sistema
 - **Automatiza** todo el flujo desde el pedido hasta la entrega
-- **Escala automáticamente** según la demanda
-- **Gestiona inventarios** en tiempo real
+- **Gestiona inventarios** en tiempo real con alertas proactivas
 - **Compra ingredientes** automáticamente cuando es necesario
-- **Notifica** el estado de cada pedido en tiempo real
+- **Notifica** el estado de cada pedido mediante eventos
 
 ## 🏗️ Arquitectura
 
 ### Arquitectura Serverless Distribuida
 
 ```
-┌──────────────┐
-│   Frontend   │
-│   (React)    │
-└──────┬───────┘
-       │
-       ▼
-┌──────────────────────────────────────┐
-│         API Gateway (Vercel)         │
-└──────┬───────────────────────┬───────┘
-       │                       │
-       ▼                       ▼
-┌──────────────┐        ┌──────────────┐
-│   Orders     │◄──────►│   Kitchen    │
-│   Service    │ Events │   Service    │
-└──────────────┘        └──────────────┘
-       │                       │
-       │    ┌──────────┐      │
-       └───►│ QStash   │◄─────┘
-            │ (Events) │
-            └────┬─────┘
-                 │
-       ┌─────────┴─────────┐
-       ▼                   ▼
-┌──────────────┐    ┌──────────────┐
-│  Warehouse   │◄──►│    Market    │
-│   Service    │    │  Integration │
-└──────────────┘    └──────────────┘
+                    ┌──────────────┐
+                    │   Frontend   │
+                    │   (React)    │
+                    └──────┬───────┘
+                           │
+         ┌─────────────────┼─────────────────┐
+         │                 │                 │
+         ▼                 ▼                 ▼
+┌──────────────┐   ┌──────────────┐   ┌──────────────┐
+│   Orders     │   │   Kitchen    │   │  Warehouse   │
+│   Service    │   │   Service    │   │   Service    │
+└──────────────┘   └──────────────┘   └──────────────┘
+         │                 │                 │
+         └────────┬────────┴────────┬────────┘
+                  │                 │
+                  ▼                 ▼
+           ┌────────────┐   ┌──────────────┐
+           │   Cron     │   │    Market    │
+           │ (Workers)  │   │  Integration │
+           └────────────┘   └──────────────┘
 ```
+
+**Nota**: El frontend consume directamente cada servicio. Los workers se ejecutan mediante cron jobs para procesar eventos de forma asíncrona.
 
 ### Principios de Diseño
 
@@ -84,21 +90,55 @@ Sistema distribuido con arquitectura **serverless event-driven** que:
 - **Framework**: Vercel Serverless Functions
 - **Base de Datos**: PostgreSQL (Neon)
 - **Cache**: Redis (Upstash)
-- **Mensajería**: QStash (HTTP-based events)
+- **Workers**: Vercel Cron Jobs
 - **ORM**: Prisma
 
 ### Frontend
-- **Framework**: React 18 + TypeScript
-- **Build Tool**: Vite
-- **Styling**: TailwindCSS
-- **Estado**: Zustand
-- **Real-time**: Server-Sent Events / WebSockets
+- **Framework**: React 19 + TypeScript
+- **Router**: TanStack Router (file-based routing)
+- **Estado**: TanStack Query (server state)
+- **Build Tool**: Vite 7
+- **Styling**: TailwindCSS 4 + shadcn/ui
 
 ### DevOps
 - **Monorepo**: Turborepo
 - **CI/CD**: GitHub Actions
 - **Deploy**: Vercel
 - **Monitoring**: Vercel Analytics
+
+### CI/CD - GitHub Actions
+
+El pipeline detecta cambios por servicio y despliega solo lo modificado.
+
+**Secrets (Repository Secrets):**
+| Secret | Descripción |
+|--------|-------------|
+| `VERCEL_TOKEN` | Token de autenticación de Vercel |
+| `VERCEL_ORG_ID` | ID de la organización en Vercel |
+| `VERCEL_PROJECT_ID_ORDERS` | Project ID del servicio Orders |
+| `VERCEL_PROJECT_ID_KITCHEN` | Project ID del servicio Kitchen |
+| `VERCEL_PROJECT_ID_WAREHOUSE` | Project ID del servicio Warehouse |
+| `VERCEL_PROJECT_ID_DASHBOARD` | Project ID del Dashboard |
+| `VERCEL_PROJECT_ID_AI` | Project ID del servicio AI |
+
+**Variables (Repository Variables):**
+| Variable | Descripción |
+|----------|-------------|
+| `ORDERS_DOMAIN_PROD` | Dominio producción Orders |
+| `ORDERS_DOMAIN_STAGING` | Dominio staging Orders |
+| `KITCHEN_DOMAIN_PROD` | Dominio producción Kitchen |
+| `KITCHEN_DOMAIN_STAGING` | Dominio staging Kitchen |
+| `WAREHOUSE_DOMAIN_PROD` | Dominio producción Warehouse |
+| `WAREHOUSE_DOMAIN_STAGING` | Dominio staging Warehouse |
+| `DASHBOARD_DOMAIN_PROD` | Dominio producción Dashboard |
+| `DASHBOARD_DOMAIN_STAGING` | Dominio staging Dashboard |
+| `AI_DOMAIN_PROD` | Dominio producción AI |
+| `AI_DOMAIN_STAGING` | Dominio staging AI |
+
+**Branches y Ambientes:**
+- `dev` → Solo CI (lint, test, build)
+- `test` → CI + Deploy a Staging
+- `main` → CI + Deploy a Producción
 
 ### IA (Bonus)
 - **Provider**: Google Gemini API
@@ -108,212 +148,102 @@ Sistema distribuido con arquitectura **serverless event-driven** que:
 
 ```
 freelunch/
-├── services/                   # Microservicios serverless
-│   ├── orders/                # Gestión de pedidos
+├── apps/
+│   └── dashboard/                    # Frontend React
+│       ├── src/
+│       │   ├── components/
+│       │   │   ├── layout/           # Sidebar, Layout principal
+│       │   │   ├── ui/               # Componentes shadcn/ui
+│       │   │   ├── FloatingChat.tsx  # Chat flotante con IA
+│       │   │   └── LoginForm.tsx     # Formulario de login
+│       │   ├── hooks/                # Custom hooks (useOrders, useChat, etc.)
+│       │   ├── lib/                  # Utilidades (auth, utils)
+│       │   ├── routes/               # File-based routing (TanStack Router)
+│       │   ├── services/             # Clientes API para cada servicio
+│       │   └── types/                # Tipos TypeScript
+│       └── vercel.json
+│
+├── services/
+│   ├── orders/                       # Servicio de órdenes
 │   │   ├── api/
-│   │   │   ├── create.ts     # POST - Crear pedido
-│   │   │   ├── list.ts       # GET - Listar pedidos
-│   │   │   └── status.ts     # GET - Estado del pedido
-│   │   ├── lib/
-│   │   ├── package.json
+│   │   │   ├── workers/              # Cron consumers
+│   │   │   │   └── kitchen-events.ts # Procesa eventos de kitchen
+│   │   │   ├── create.ts             # POST /api/create
+│   │   │   ├── list.ts               # GET /api/list
+│   │   │   ├── status.ts             # GET /api/status
+│   │   │   ├── history.ts            # GET /api/history
+│   │   │   └── stats.ts              # GET /api/stats
+│   │   ├── src/
+│   │   │   ├── application/          # Casos de uso (Clean Architecture)
+│   │   │   ├── domain/               # Entidades, Value Objects, Eventos
+│   │   │   └── infrastructure/       # Adaptadores (Prisma, Redis, etc.)
+│   │   ├── prisma/                   # Schema y migraciones
 │   │   └── vercel.json
 │   │
-│   ├── kitchen/               # Lógica de cocina y recetas
+│   ├── kitchen/                      # Servicio de cocina
 │   │   ├── api/
-│   │   │   ├── prepare.ts    # POST - Preparar plato
-│   │   │   └── recipes.ts    # GET - Obtener recetas
-│   │   └── ...
+│   │   │   ├── workers/
+│   │   │   │   ├── order-consumer.ts     # Procesa órdenes nuevas
+│   │   │   │   └── warehouse-consumer.ts # Procesa respuestas de warehouse
+│   │   │   ├── recipes.ts            # GET /api/recipes
+│   │   │   ├── plates.ts             # GET /api/plates
+│   │   │   └── stats.ts              # GET /api/stats
+│   │   ├── src/                      # Clean Architecture
+│   │   ├── prisma/
+│   │   └── vercel.json
 │   │
-│   ├── warehouse/             # Gestión de inventario
+│   ├── warehouse/                    # Servicio de inventario
 │   │   ├── api/
-│   │   │   ├── inventory.ts  # GET - Estado inventario
-│   │   │   └── check.ts      # POST - Verificar disponibilidad
-│   │   └── ...
+│   │   │   ├── workers/
+│   │   │   │   └── kitchen-consumer.ts   # Procesa solicitudes de ingredientes
+│   │   │   ├── inventory.ts          # GET /api/inventory
+│   │   │   ├── purchases.ts          # GET /api/purchases
+│   │   │   ├── request-purchase.ts   # POST /api/request-purchase (para IA)
+│   │   │   └── stats.ts              # GET /api/stats
+│   │   ├── src/                      # Clean Architecture
+│   │   ├── prisma/
+│   │   └── vercel.json
 │   │
-│   ├── market/                # Integración con plaza de mercado
-│   │   ├── api/
-│   │   │   └── buy.ts        # POST - Comprar ingredientes
-│   │   └── ...
-│   │
-│   └── ai/                    # Sistema de recomendación IA
+│   └── ai/                           # Servicio de IA (Gemini)
 │       ├── api/
-│       │   └── recommend.ts  # POST - Recomendar recetas
-│       └── ...
+│       │   ├── chat.ts               # POST /api/chat (conversacional)
+│       │   ├── recommendations.ts    # GET /api/recommendations
+│       │   └── health.ts             # GET /api/health
+│       ├── src/
+│       │   ├── clients/              # Clientes para otros servicios
+│       │   ├── prompts/              # System prompts para Gemini
+│       │   └── tools/                # Function calling definitions
+│       └── vercel.json
 │
-├── frontend/                  # Aplicación web
-│   ├── src/
-│   │   ├── components/       # Componentes React
-│   │   ├── pages/           # Páginas
-│   │   ├── hooks/           # Custom hooks
-│   │   ├── services/        # API clients
-│   │   └── stores/          # Estado global
-│   ├── package.json
-│   └── vercel.json
+├── docs/
+│   ├── GIT_WORKFLOW.md               # Flujo de trabajo Git
+│   └── PIPELINE_FLOW.md              # Flujo del pipeline de eventos
 │
-├── packages/                  # Código compartido
-│   ├── shared-types/         # Types TypeScript
-│   ├── database/             # Cliente y esquemas DB
-│   ├── events/               # Definiciones de eventos
-│   └── utils/                # Utilidades comunes
-│
-├── docs/                      # Documentación
-│   ├── architecture.md       # Decisiones arquitectónicas
-│   ├── deployment.md         # Guía de despliegue
-│   └── api.md               # Documentación API
-│
-├── .github/
-│   └── workflows/           # GitHub Actions
-│       ├── ci.yml          # Tests y linting
-│       └── deploy.yml      # Deploy automático
-│
-├── turbo.json               # Configuración Turborepo
-├── package.json             # Workspace root
-└── README.md               # Este archivo
+└── README.md
 ```
+
+### Patrones de Arquitectura
+
+- **Clean Architecture** en cada servicio (domain → application → infrastructure)
+- **File-based Routing** en el frontend con TanStack Router
+- **Workers via Cron** para procesamiento asíncrono de eventos
+- **Repository Pattern** con Prisma para persistencia
+- **Event-Driven** comunicación entre servicios via Redis Streams
+
+## 🖥️ Aplicaciones
+
+| App | Descripción | Documentación |
+|-----|-------------|---------------|
+| **Dashboard** | Panel de control React para gestionar el sistema | [README](./apps/dashboard/README.md) |
 
 ## 🚀 Servicios
 
-### 1. Orders Service
-- **Responsabilidad**: Gestión del ciclo de vida de los pedidos
-- **Eventos emitidos**: `ORDER_CREATED`, `ORDER_COMPLETED`, `ORDER_FAILED`
-- **Escalado**: Automático basado en requests
-
-### 2. Kitchen Service
-- **Responsabilidad**: Selección de recetas y coordinación de preparación
-- **Eventos emitidos**: `RECIPE_SELECTED`, `INGREDIENTS_REQUESTED`, `DISH_PREPARED`
-- **Recetas disponibles**:
-  - 🍔 Hamburguesa Clásica
-  - 🥗 Ensalada César
-  - 🍗 Pollo con Arroz
-  - 🥔 Papas Bravas
-  - 🍚 Bowl de Arroz
-  - 🥪 Sandwich Especial
-
-### 3. Warehouse Service
-- **Responsabilidad**: Control de inventario y gestión de stock
-- **Eventos emitidos**: `STOCK_AVAILABLE`, `STOCK_INSUFFICIENT`, `PURCHASE_REQUIRED`
-- **Inventario inicial**: 5 unidades por ingrediente
-
-### 4. Market Service
-- **Responsabilidad**: Integración con API externa de plaza de mercado
-- **Eventos emitidos**: `PURCHASE_COMPLETED`, `PURCHASE_FAILED`
-- **Endpoint externo**: `https://recruitment.alegra.com/api/farmers-market/buy`
-
-### 5. AI Service (Bonus)
-- **Responsabilidad**: Recomendaciones inteligentes basadas en:
-  - Inventario disponible
-  - Historial de pedidos
-  - Predicción de demanda
-  - Optimización de compras
-
-## 💾 Instalación y Configuración
-
-### Prerrequisitos
-```bash
-node >= 20.0.0
-npm >= 10.0.0
-```
-
-### 1. Clonar el repositorio
-```bash
-git clone https://github.com/[tu-usuario]/freelunch.git
-cd freelunch
-```
-
-### 2. Instalar dependencias
-```bash
-npm install
-```
-
-### 3. Configurar variables de entorno
-```bash
-# Copiar archivo de ejemplo
-cp .env.example .env.local
-
-# Configurar las siguientes variables:
-DATABASE_URL="postgresql://..."
-REDIS_URL="redis://..."
-QSTASH_TOKEN="..."
-QSTASH_URL="..."
-GEMINI_API_KEY="..."
-```
-
-### 4. Configurar base de datos
-```bash
-# Generar cliente Prisma
-npm run db:generate
-
-# Ejecutar migraciones
-npm run db:migrate
-
-# Seed inicial (opcional)
-npm run db:seed
-```
-
-### 5. Desarrollo local
-```bash
-# Iniciar todos los servicios en modo desarrollo
-npm run dev
-
-# O iniciar servicios específicos
-npm run dev:orders
-npm run dev:kitchen
-npm run dev:frontend
-```
-
-## 🌐 Despliegue
-
-### Despliegue Automático
-El proyecto está configurado para despliegue automático en Vercel:
-
-1. Fork este repositorio
-2. Conecta tu repositorio con Vercel
-3. Configura las variables de entorno en Vercel Dashboard
-4. Push a `main` dispara deploy automático
-
-### URLs de Producción
-```
-Frontend:    https://freelunch.vercel.app
-Orders API:  https://freelunch-orders.vercel.app
-Kitchen API: https://freelunch-kitchen.vercel.app
-Warehouse:   https://freelunch-warehouse.vercel.app
-Market:      https://freelunch-market.vercel.app
-```
-
-## 📡 API Endpoints
-
-### Orders Service
-```http
-POST   /api/create       # Crear nuevo pedido
-GET    /api/list         # Listar todos los pedidos
-GET    /api/status/:id   # Estado de un pedido
-```
-
-### Kitchen Service
-```http
-POST   /api/prepare      # Preparar plato
-GET    /api/recipes      # Obtener recetas disponibles
-GET    /api/history      # Historial de preparación
-```
-
-### Warehouse Service
-```http
-GET    /api/inventory    # Estado del inventario
-POST   /api/check        # Verificar disponibilidad
-POST   /api/update       # Actualizar inventario
-```
-
-### Market Service
-```http
-POST   /api/buy          # Comprar ingredientes
-GET    /api/purchases    # Historial de compras
-```
-
-### AI Service
-```http
-POST   /api/recommend    # Obtener recomendaciones
-GET    /api/analytics    # Analytics y predicciones
-```
+| Servicio | Descripción | Documentación |
+|----------|-------------|---------------|
+| **Orders** | Gestión del ciclo de vida de los pedidos | [README](./services/orders/README.md) |
+| **Kitchen** | Selección de recetas y coordinación de preparación | [README](./services/kitchen/README.md) |
+| **Warehouse** | Control de inventario y gestión de stock | [README](./services/warehouse/README.md) |
+| **AI** | Chat conversacional y recomendaciones con Gemini | [README](./services/ai/README.md) |
 
 ## ⚡ Sistema de Eventos
 
@@ -325,37 +255,54 @@ sequenceDiagram
     participant O as Orders
     participant K as Kitchen
     participant W as Warehouse
-    participant M as Market
 
-    U->>O: Crear Pedido
-    O->>K: ORDER_CREATED
-    K->>W: INGREDIENTS_REQUESTED
-    alt Stock Disponible
-        W->>K: STOCK_AVAILABLE
-        K->>O: DISH_PREPARED
-        O->>U: Pedido Completado
+    U->>O: POST /api/create
+    O->>O: Crear Order + OrderItems
+    O-->>K: order.created (stream:orders:events)
+
+    K->>K: Crear Plate + Asignar Receta
+    K-->>O: plate.assigned (stream:kitchen:events)
+    K-->>W: ingredients.requested (stream:warehouse:requests)
+
+    alt Ingredientes Disponibles
+        W->>W: Reservar Stock
+        W-->>K: ingredients.reserved (stream:warehouse:responses)
     else Stock Insuficiente
-        W->>M: PURCHASE_REQUIRED
-        M->>W: PURCHASE_COMPLETED
-        W->>K: STOCK_AVAILABLE
-        K->>O: DISH_PREPARED
-        O->>U: Pedido Completado
+        W->>W: Comprar en Farmers Market API
+        W-->>K: ingredients.reserved (stream:warehouse:responses)
     end
+
+    K->>K: Cocinar Plato
+    K-->>O: plate.cooking (stream:kitchen:events)
+    K-->>O: plate.ready (stream:kitchen:events)
+
+    O->>O: Actualizar OrderItem status
+    O->>U: order.completed
 ```
+
+### Redis Streams
+
+| Stream | Productor | Consumidor | Propósito |
+|--------|-----------|------------|-----------|
+| `stream:orders:events` | Orders | Kitchen | Eventos de ciclo de vida de órdenes |
+| `stream:kitchen:events` | Kitchen | Orders | Eventos de preparación de platos |
+| `stream:warehouse:requests` | Kitchen | Warehouse | Solicitudes de ingredientes |
+| `stream:warehouse:responses` | Warehouse | Kitchen | Respuestas de disponibilidad |
 
 ### Eventos del Sistema
 
 | Evento | Emisor | Datos | Descripción |
 |--------|--------|-------|-------------|
-| `ORDER_CREATED` | Orders | orderId, quantity | Nuevo pedido creado |
-| `RECIPE_SELECTED` | Kitchen | orderId, recipeId | Receta seleccionada |
-| `INGREDIENTS_REQUESTED` | Kitchen | orderId, ingredients | Solicitud de ingredientes |
-| `STOCK_AVAILABLE` | Warehouse | orderId, ingredients | Stock confirmado |
-| `STOCK_INSUFFICIENT` | Warehouse | ingredients, missing | Falta de stock |
-| `PURCHASE_REQUIRED` | Warehouse | ingredients, quantity | Compra necesaria |
-| `PURCHASE_COMPLETED` | Market | ingredients, purchased | Compra exitosa |
-| `DISH_PREPARED` | Kitchen | orderId, dishId | Plato preparado |
-| `ORDER_COMPLETED` | Orders | orderId, time | Pedido completado |
+| `order.created` | Orders | orderId, quantity, items[] | Nueva orden creada |
+| `order.completed` | Orders | orderId, completedAt | Orden completada |
+| `order.failed` | Orders | orderId, reason | Orden fallida |
+| `plate.assigned` | Kitchen | plateId, recipeId, ingredients | Receta asignada al plato |
+| `ingredients.requested` | Kitchen | plateId, ingredients | Solicitud de ingredientes |
+| `plate.cooking` | Kitchen | plateId, cookingStartedAt | Plato en preparación |
+| `plate.ready` | Kitchen | plateId, readyAt | Plato listo |
+| `plate.failed` | Kitchen | plateId, reason | Plato fallido |
+| `ingredients.reserved` | Warehouse | plateId, ingredients | Ingredientes reservados |
+| `ingredients.unavailable` | Warehouse | plateId, reason | Ingredientes no disponibles |
 
 ## 🤖 Funcionalidades IA
 
@@ -364,85 +311,33 @@ sequenceDiagram
 El sistema utiliza **Google Gemini** para:
 
 1. **Recomendación de Recetas**
-   - Basado en inventario actual
-   - Optimización de uso de ingredientes
-   - Minimización de desperdicios
+    - Basado en inventario actual
+    - Optimización de uso de ingredientes
+    - Minimización de desperdicios
 
 2. **Predicción de Demanda**
-   - Análisis de patrones históricos
-   - Predicción de picos de demanda
-   - Sugerencias de pre-compra
+    - Análisis de patrones históricos
+    - Predicción de picos de demanda
+    - Sugerencias de pre-compra
 
 3. **Optimización de Compras**
-   - Mejor momento para comprar
-   - Cantidades óptimas
-   - Ahorro de costos
+    - Mejor momento para comprar
+    - Cantidades óptimas
+    - Ahorro de costos
 
 ## 🎮 Demo
 
-### Credenciales de Prueba
+### Acceso al Sistema
 ```
-URL: https://freelunch.vercel.app
-Usuario: demo@freelunch.com
-Password: demo123
+PRODUCCION URL: https://freelunch.juliocaicedo.com
+STAGING URL: https://freelunch-stg.juliocaicedo.com
+Email: cualquier correo @alegra.com (ej: demo@alegra.com)
+Verificación: Resolver el reto matemático mostrado
 ```
-
-### Funcionalidades Principales
-
-1. **Dashboard Gerencial**
-   - Vista en tiempo real de pedidos
-   - Estado del inventario
-   - Métricas y estadísticas
-
-2. **Gestión de Pedidos**
-   - Crear pedidos masivos
-   - Seguimiento en tiempo real
-   - Historial completo
-
-3. **Control de Inventario**
-   - Vista actual de stock
-   - Alertas de bajo inventario
-   - Historial de movimientos
-
-4. **Panel de IA**
-   - Recomendaciones en tiempo real
-   - Predicciones de demanda
-   - Insights de optimización
-
-## 📊 Métricas y Monitoreo
-
-- **Uptime**: 99.9% SLA
-- **Latencia promedio**: < 200ms
-- **Capacidad**: 10,000 pedidos/minuto
-- **Escalado**: Automático e ilimitado
-
-## 🧪 Testing
-
-```bash
-# Tests unitarios
-npm run test
-
-# Tests de integración
-npm run test:integration
-
-# Tests E2E
-npm run test:e2e
-
-# Coverage
-npm run test:coverage
-```
-
-## 📝 Licencia
-
-MIT
-
-## 👥 Equipo
-
-Desarrollado para el reto técnico de Alegra
 
 ## 📧 Contacto
 
-Para preguntas o soporte: [tu-email]
+Para preguntas o soporte: llulioscesar@gmail.com / +573233223154
 
 ---
 

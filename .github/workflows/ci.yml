@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: ['**']
+    branches: [dev, test, main]
   pull_request:
-    branches: [main, develop, dev]
+    branches: [dev, test, main]
 
 permissions:
   contents: read
@@ -18,15 +18,12 @@ jobs:
   detect-changes:
     name: Detect Changes
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: read
     outputs:
       orders: ${{ steps.changes.outputs.orders }}
       kitchen: ${{ steps.changes.outputs.kitchen }}
       warehouse: ${{ steps.changes.outputs.warehouse }}
-      market: ${{ steps.changes.outputs.market }}
-      frontend: ${{ steps.changes.outputs.frontend }}
+      dashboard: ${{ steps.changes.outputs.dashboard }}
+      ai: ${{ steps.changes.outputs.ai }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,149 +35,101 @@ jobs:
         id: changes
         with:
           list-files: shell
+          token: ${{ github.token }}
+          base: ${{ github.event.before || github.event.pull_request.base.sha }}
           filters: |
             orders:
               - 'services/orders/**'
-              - 'packages/**'
             kitchen:
               - 'services/kitchen/**'
-              - 'packages/**'
             warehouse:
               - 'services/warehouse/**'
-              - 'packages/**'
-            market:
-              - 'services/market/**'
-              - 'packages/**'
-            frontend:
-              - 'frontend/**'
-              - 'packages/**'
+            dashboard:
+              - 'apps/dashboard/**'
+            ai:
+              - 'services/ai/**'
 
-  lint-orders:
-    name: Lint Orders Service
+  # Orders Service
+  orders:
+    name: Orders Service
     needs: detect-changes
     if: needs.detect-changes.outputs.orders == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: 'services/orders/package-lock.json'
-
-      - name: Install dependencies
-        working-directory: ./services/orders
-        run: npm ci
-
-      - name: Run ESLint
-        working-directory: ./services/orders
-        run: npm run lint
-
-      - name: Type Check
-        working-directory: ./services/orders
-        run: npm run build
-
-  test-orders:
-    name: Test Orders Service
-    needs: detect-changes
-    if: needs.detect-changes.outputs.orders == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: 'services/orders/package-lock.json'
-
-      - name: Install dependencies
-        working-directory: ./services/orders
-        run: npm ci
-
-      - name: Run tests
-        working-directory: ./services/orders
-        run: npm test -- --passWithNoTests
-
-      - name: Upload coverage
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: orders-coverage
-          path: services/orders/coverage
+    uses: ./.github/workflows/service-ci.yml
+    with:
+      service-name: orders
+      service-path: ./services/orders
+      should-deploy: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/test' || github.ref == 'refs/heads/main') }}
+      environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'preview' }}
+      custom-domain: ${{ github.ref == 'refs/heads/main' && vars.ORDERS_DOMAIN_PROD || (github.ref == 'refs/heads/test' && vars.ORDERS_DOMAIN_STAGING || '') }}
+    secrets:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_ORDERS }}
 
   # Kitchen Service
-  lint-kitchen:
-    name: Lint Kitchen Service
+  kitchen:
+    name: Kitchen Service
     needs: detect-changes
     if: needs.detect-changes.outputs.kitchen == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    uses: ./.github/workflows/service-ci.yml
+    with:
+      service-name: kitchen
+      service-path: ./services/kitchen
+      should-deploy: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/test' || github.ref == 'refs/heads/main') }}
+      environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'preview' }}
+      custom-domain: ${{ github.ref == 'refs/heads/main' && vars.KITCHEN_DOMAIN_PROD || (github.ref == 'refs/heads/test' && vars.KITCHEN_DOMAIN_STAGING || '') }}
+    secrets:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_KITCHEN }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: 'services/kitchen/package-lock.json'
-
-      - name: Install dependencies
-        working-directory: ./services/kitchen
-        run: npm ci
-
-      - name: Run ESLint
-        working-directory: ./services/kitchen
-        run: npm run lint
-
-      - name: Type Check
-        working-directory: ./services/kitchen
-        run: npm run build
-
-  test-kitchen:
-    name: Test Kitchen Service
+  # Warehouse Service
+  warehouse:
+    name: Warehouse Service
     needs: detect-changes
-    if: needs.detect-changes.outputs.kitchen == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    if: needs.detect-changes.outputs.warehouse == 'true'
+    uses: ./.github/workflows/service-ci.yml
+    with:
+      service-name: warehouse
+      service-path: ./services/warehouse
+      should-deploy: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/test' || github.ref == 'refs/heads/main') }}
+      environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'preview' }}
+      custom-domain: ${{ github.ref == 'refs/heads/main' && vars.WAREHOUSE_DOMAIN_PROD || (github.ref == 'refs/heads/test' && vars.WAREHOUSE_DOMAIN_STAGING || '') }}
+    secrets:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_WAREHOUSE }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: 'services/kitchen/package-lock.json'
+  # App Dashboard
+  dashboard:
+    name: App Dashboard
+    needs: detect-changes
+    if: needs.detect-changes.outputs.dashboard == 'true'
+    uses: ./.github/workflows/service-ci.yml
+    with:
+      service-name: dashboard
+      service-path: ./apps/dashboard
+      should-deploy: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/test' || github.ref == 'refs/heads/main') }}
+      environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'preview' }}
+      custom-domain: ${{ github.ref == 'refs/heads/main' && vars.DASHBOARD_DOMAIN_PROD || (github.ref == 'refs/heads/test' && vars.DASHBOARD_DOMAIN_STAGING || '') }}
+    secrets:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_DASHBOARD }}
 
-      - name: Install dependencies
-        working-directory: ./services/kitchen
-        run: npm ci
-
-      - name: Run tests
-        working-directory: ./services/kitchen
-        run: npm test -- --passWithNoTests
-
-  # Summary job
-  ci-success:
-    name: CI Success
-    if: always()
-    needs: [lint-orders, test-orders, lint-kitchen, test-kitchen]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check all jobs
-        run: |
-          if [[ "${{ needs.lint-orders.result }}" == "failure" ]] || \
-             [[ "${{ needs.test-orders.result }}" == "failure" ]] || \
-             [[ "${{ needs.lint-kitchen.result }}" == "failure" ]] || \
-             [[ "${{ needs.test-kitchen.result }}" == "failure" ]]; then
-            echo "One or more CI jobs failed"
-            exit 1
-          fi
-          echo "All CI jobs passed or were skipped"
+  # AI Service
+  ai:
+    name: AI Service
+    needs: detect-changes
+    if: needs.detect-changes.outputs.ai == 'true'
+    uses: ./.github/workflows/service-ci.yml
+    with:
+      service-name: ai
+      service-path: ./services/ai
+      should-deploy: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/test' || github.ref == 'refs/heads/main') }}
+      environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'preview' }}
+      custom-domain: ${{ github.ref == 'refs/heads/main' && vars.AI_DOMAIN_PROD || (github.ref == 'refs/heads/test' && vars.AI_DOMAIN_STAGING || '') }}
+    secrets:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_AI }}

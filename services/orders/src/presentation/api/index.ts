@@ -5,6 +5,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { HealthCheckService } from '@application/services/HealthCheckService';
 import { SystemHealthChecker } from '@infrastructure/adapters/health/SystemHealthChecker';
+import { withCors } from '@infrastructure/http/cors';
 
 // Singleton instance for health checker
 let healthChecker: SystemHealthChecker | null = null;
@@ -20,7 +21,7 @@ function getHealthCheckService(): HealthCheckService {
   return healthCheckService;
 }
 
-export default async function handler(
+async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
@@ -49,8 +50,10 @@ export default async function handler(
       endpoints: [
         'POST /api/create - Create new order',
         'GET /api/list - List all orders',
-        'GET /api/status?id={orderId} - Get order status',
+        'GET /api/status?id={orderId} - Get order detail with items',
         'PATCH /api/status?id={orderId} - Update order status',
+        'GET /api/history?orderId={orderId} - Get status history for all items in order',
+        'GET /api/history?itemId={itemId} - Get status history for specific item',
       ],
       layers: {
         domain: 'Ready',
@@ -69,3 +72,5 @@ export default async function handler(
     });
   }
 }
+
+export default withCors(handler);

@@ -1,39 +1,5 @@
 {
-  "functions": {
-    "src/presentation/api/*.ts": {
-      "maxDuration": 10,
-      "memory": 512,
-      "runtime": "nodejs20.x"
-    },
-    "api/workers/*.ts": {
-      "maxDuration": 60,
-      "memory": 1024,
-      "runtime": "nodejs20.x"
-    }
-  },
-  "crons": [
-    {
-      "path": "/api/workers/kitchen-events",
-      "schedule": "* * * * *"
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/",
-      "destination": "/src/presentation/api"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/src/presentation/api/$1"
-    }
-  ],
-  "env": {
-    "SERVICE_NAME": "orders-service"
-  },
-  "git": {
-    "deploymentEnabled": {
-      "main": true,
-      "test": true
-    }
-  }
+  "installCommand": "npm ci",
+  "buildCommand": "npm run build && npx prisma db push --skip-generate --accept-data-loss",
+  "outputDirectory": "."
 }

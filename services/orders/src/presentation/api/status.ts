@@ -6,6 +6,7 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { z } from 'zod';
 import { dependencies } from '../../infrastructure/config/dependencies';
 import { withMetrics } from '../../infrastructure/metrics/MetricsMiddleware';
+import { withCors } from '../../infrastructure/http/cors';
 
 // Request validation schema for update
 const updateStatusSchema = z.object({
@@ -82,4 +83,4 @@ async function handler(
   }
 }
 
-export default withMetrics(handler);
+export default withCors(withMetrics(handler));

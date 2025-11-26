@@ -1,7 +1,8 @@
 // Prisma Schema for Orders Service
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
@@ -40,6 +41,28 @@ model OrderItem {
   deliveredAt    DateTime?
   failureReason  String?
 
+  statusHistory  OrderItemStatusHistory[]
+
   @@index([orderId])
   @@index([status])
+}
+
+// Status history for complete traceability
+model OrderItemStatusHistory {
+  id          String   @id @default(cuid())
+  orderItemId String
+  orderItem   OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+
+  fromStatus  String?  // null for initial state
+  toStatus    String
+  changedAt   DateTime @default(now())
+
+  // Additional context
+  recipeId    String?
+  recipeName  String?
+  reason      String?  // For failures or notes
+  metadata    Json?    // Any extra data
+
+  @@index([orderItemId])
+  @@index([changedAt])
 }
