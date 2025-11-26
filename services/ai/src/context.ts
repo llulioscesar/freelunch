@@ -1,11 +1,11 @@
 import { SystemContext } from './types';
 import { getInventory, getPurchaseStats, getRecentPurchases, getWarehouseStats } from './clients/warehouse';
 import { getRecipes, getKitchenStats } from './clients/kitchen';
-import { getOrdersStats } from './clients/orders';
+import { getOrdersStats, getActiveOrders } from './clients/orders';
 
 export async function buildSystemContext(): Promise<SystemContext> {
   // Fetch all data in parallel
-  const [inventory, recipes, purchaseStats, recentPurchases, ordersStats, kitchenStats, warehouseStats] = await Promise.all([
+  const [inventory, recipes, purchaseStats, recentPurchases, ordersStats, kitchenStats, warehouseStats, activeOrders] = await Promise.all([
     getInventory(),
     getRecipes(),
     getPurchaseStats(),
@@ -13,6 +13,7 @@ export async function buildSystemContext(): Promise<SystemContext> {
     getOrdersStats(),
     getKitchenStats(),
     getWarehouseStats(),
+    getActiveOrders(),
   ]);
 
   // Extract ingredients with failed purchases (obtainedQuantity = 0)
@@ -29,5 +30,6 @@ export async function buildSystemContext(): Promise<SystemContext> {
     ordersStats: ordersStats || undefined,
     kitchenStats: kitchenStats || undefined,
     warehouseStats: warehouseStats || undefined,
+    activeOrders: activeOrders.length > 0 ? activeOrders : undefined,
   };
 }

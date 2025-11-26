@@ -183,6 +183,24 @@ export interface AIRecommendationsResponse {
   };
 }
 
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
+}
+
+export interface ChatResponse {
+  success: boolean;
+  data: {
+    response: string;
+    conversationId: string;
+  };
+  meta?: {
+    duration: number;
+  };
+}
+
 export interface InventoryData {
   items: InventoryItem[];
   totalItems: number;

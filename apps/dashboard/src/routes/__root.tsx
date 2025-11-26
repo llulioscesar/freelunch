@@ -1,6 +1,7 @@
 import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Layout } from '../components/layout'
+import { FloatingChat } from '../components/FloatingChat'
 
 import appCss from '../styles.css?url'
 
@@ -49,6 +50,7 @@ function RootComponent() {
         <Layout>
           <Outlet />
         </Layout>
+        <FloatingChat />
       </QueryClientProvider>
     </RootDocument>
   )

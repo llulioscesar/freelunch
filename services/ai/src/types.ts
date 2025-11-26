@@ -52,6 +52,24 @@ export interface KitchenStats {
   };
 }
 
+// Order types
+export interface OrderItem {
+  id: string;
+  status: string;
+  recipeName?: string;
+  failureReason?: string;
+}
+
+export interface Order {
+  id: string;
+  status: string;
+  customerName: string;
+  quantity: number;
+  items: OrderItem[];
+  progress: number;
+  createdAt: string;
+}
+
 // Orders stats
 export interface OrdersStats {
   orders: {
@@ -107,6 +125,7 @@ export interface SystemContext {
   ordersStats?: OrdersStats;
   kitchenStats?: KitchenStats;
   warehouseStats?: WarehouseStats;
+  activeOrders?: Order[];
 }
 
 // Recommendations response

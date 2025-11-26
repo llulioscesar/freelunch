@@ -8,6 +8,14 @@ jest.mock('@google/generative-ai', () => ({
   GoogleGenerativeAI: jest.fn().mockImplementation(() => ({
     getGenerativeModel: mockGetGenerativeModel,
   })),
+  FunctionCallingMode: {
+    AUTO: 'AUTO',
+  },
+  SchemaType: {
+    OBJECT: 'OBJECT',
+    STRING: 'STRING',
+    NUMBER: 'NUMBER',
+  },
 }));
 
 import { generateContent, generateJSON } from '../../../src/clients/gemini';
