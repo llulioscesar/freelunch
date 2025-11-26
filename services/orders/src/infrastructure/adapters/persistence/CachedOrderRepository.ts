@@ -35,6 +35,9 @@ export class CachedOrderRepository implements OrderRepository {
   private readonly CACHE_TTL_LIST = 60; // 1 minute
   private readonly CACHE_TTL_IMMUTABLE = 3600; // 1 hour for completed orders
 
+  // Key for tracking list/count cache keys (for invalidation)
+  private readonly LIST_KEYS_SET = 'orders:list-keys';
+
   constructor(baseRepository: PrismaOrderRepository) {
     this.baseRepository = baseRepository;
     this.redis = RedisClient.getInstance();
@@ -126,11 +129,12 @@ export class CachedOrderRepository implements OrderRepository {
     // Fetch from database
     const orders = await this.baseRepository.findAll(filters);
 
-    // Cache the result
+    // Cache the result and track the key for invalidation
     const data = orders.map((order) => order.toPrimitives());
     await this.redis.set(cacheKey, JSON.stringify(data), {
       ex: this.CACHE_TTL_LIST,
     });
+    await this.redis.sadd(this.LIST_KEYS_SET, cacheKey);
 
     return orders;
   }
@@ -153,7 +157,9 @@ export class CachedOrderRepository implements OrderRepository {
 
     const count = await this.baseRepository.count(filters);
 
+    // Cache and track the key for invalidation
     await this.redis.set(cacheKey, count, { ex: this.CACHE_TTL_LIST });
+    await this.redis.sadd(this.LIST_KEYS_SET, cacheKey);
 
     return count;
   }
@@ -244,14 +250,24 @@ export class CachedOrderRepository implements OrderRepository {
 
   /**
    * Invalidate all list and count caches
-   * Uses Redis SCAN to find and delete pattern-matched keys
+   * Gets all tracked keys from the Set and deletes them
    */
   private async invalidateListCaches(): Promise<void> {
     try {
-      // Note: Upstash Redis doesn't support SCAN in REST API
-      // Alternative: Use a Set to track list cache keys
-      // For now, we'll use expiration-based invalidation (TTL)
-      console.log('ℹ️  List caches will expire naturally (TTL-based invalidation)');
+      // Get all tracked list/count cache keys
+      const keys = await this.redis.smembers(this.LIST_KEYS_SET);
+
+      if (keys.length === 0) {
+        return;
+      }
+
+      // Delete all cached lists/counts
+      await this.redis.del(...keys);
+
+      // Clear the tracking set
+      await this.redis.del(this.LIST_KEYS_SET);
+
+      console.log(`🗑️ Invalidated ${keys.length} list/count caches`);
     } catch (error) {
       console.error('Cache invalidation error:', error);
     }
