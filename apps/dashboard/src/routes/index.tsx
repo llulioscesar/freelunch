@@ -10,6 +10,7 @@ import {
   Loader2,
   AlertCircle,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useStats, useCreateOrder, useInventory, useOrders, useRecipes } from '../hooks';
 import { Skeleton } from '../components/ui/skeleton';
 import type { OrderListItem, InventoryItem } from '../types/api';
@@ -28,7 +29,22 @@ function DashboardPage() {
   const createOrder = useCreateOrder();
 
   const handleCreateOrder = () => {
-    createOrder.mutate({ quantity });
+    createOrder.mutate(
+      { quantity },
+      {
+        onSuccess: () => {
+          toast.success('Pedido creado exitosamente', {
+            description: `Se creó un pedido con ${quantity} platos`,
+          });
+          setQuantity(1);
+        },
+        onError: (error) => {
+          toast.error('Error al crear pedido', {
+            description: error.message,
+          });
+        },
+      }
+    );
   };
 
   // Get last 5 orders for recent activity
@@ -71,7 +87,7 @@ function DashboardPage() {
         />
         <StatsCard
           title="Recetas Disponibles"
-          value={recipesData?.recipes?.length?.toString() ?? '6'}
+          value={recipesData?.recipes?.length?.toString()}
           icon={UtensilsCrossed}
           color="purple"
         />
@@ -100,7 +116,7 @@ function DashboardPage() {
             <button
               onClick={handleCreateOrder}
               disabled={createOrder.isPending}
-              className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+              className="bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white font-medium py-2 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
             >
               {createOrder.isPending ? (
                 <>
@@ -112,16 +128,6 @@ function DashboardPage() {
               )}
             </button>
           </div>
-          {createOrder.isError && (
-            <p className="mt-2 text-sm text-red-500">
-              Error: {createOrder.error?.message}
-            </p>
-          )}
-          {createOrder.isSuccess && (
-            <p className="mt-2 text-sm text-green-500">
-              Pedido creado exitosamente
-            </p>
-          )}
         </div>
 
         {/* Inventory Summary */}
