@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { dependencies } from '../../infrastructure/config/dependencies';
 import { withLogging } from '../../infrastructure/logging/RequestLogger';
 import { withMetrics } from '../../infrastructure/metrics/MetricsMiddleware';
+import { withCors } from '../../infrastructure/http/cors';
 import { logger } from '../../infrastructure/logging/Logger';
 
 // Request validation schema
@@ -77,5 +78,5 @@ async function createOrderHandler(
   }
 }
 
-// Export handler wrapped with logging and metrics middleware
-export default withMetrics(withLogging(createOrderHandler));
+// Export handler wrapped with CORS, logging and metrics middleware
+export default withCors(withMetrics(withLogging(createOrderHandler)));
