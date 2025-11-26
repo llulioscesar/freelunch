@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { buildSystemContext } from '../src/context';
-import { buildChatSystemPrompt, buildChatPrompt } from '../src/prompts/chat';
-import { generateContent } from '../src/clients/gemini';
+import { buildChatSystemPrompt } from '../src/prompts/chat';
+import { generateWithTools } from '../src/clients/gemini';
 import { withCors } from '../src/middleware/cors';
 import { ChatRequest, ChatResponse } from '../src/types';
 import { randomUUID } from 'crypto';
@@ -28,12 +28,11 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     // Build context from other services
     const context = await buildSystemContext();
 
-    // Build prompts
+    // Build system prompt with context
     const systemPrompt = buildChatSystemPrompt(context);
-    const fullPrompt = buildChatPrompt(systemPrompt, body.message);
 
-    // Generate response using Gemini
-    const aiResponse = await generateContent(fullPrompt);
+    // Generate response using Gemini with function calling
+    const aiResponse = await generateWithTools(systemPrompt, body.message);
 
     const duration = Date.now() - startTime;
 

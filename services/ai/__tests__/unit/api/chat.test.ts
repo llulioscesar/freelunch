@@ -6,12 +6,12 @@ jest.mock('../../../src/context', () => ({
 }));
 
 jest.mock('../../../src/clients/gemini', () => ({
-  generateContent: jest.fn(),
+  generateWithTools: jest.fn(),
 }));
 
 import handler from '../../../api/chat';
 import { buildSystemContext } from '../../../src/context';
-import { generateContent } from '../../../src/clients/gemini';
+import { generateWithTools } from '../../../src/clients/gemini';
 
 describe('Chat API', () => {
   let mockReq: Partial<VercelRequest>;
@@ -46,7 +46,7 @@ describe('Chat API', () => {
         recentFailedPurchases: [],
       });
 
-      (generateContent as jest.Mock).mockResolvedValue('You can make Pizza!');
+      (generateWithTools as jest.Mock).mockResolvedValue('You can make Pizza!');
 
       await handler(mockReq as VercelRequest, mockRes as VercelResponse);
 
@@ -92,7 +92,7 @@ describe('Chat API', () => {
         recentFailedPurchases: [],
       });
 
-      (generateContent as jest.Mock).mockResolvedValue('Hi there!');
+      (generateWithTools as jest.Mock).mockResolvedValue('Hi there!');
 
       await handler(mockReq as VercelRequest, mockRes as VercelResponse);
 

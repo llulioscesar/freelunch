@@ -20,6 +20,24 @@ export function buildChatSystemPrompt(context: SystemContext): string {
 - Items listos para entregar: ${context.ordersStats.items.ready}`;
   }
 
+  // Active orders section
+  let activeOrdersSection = '';
+  if (context.activeOrders && context.activeOrders.length > 0) {
+    const ordersText = context.activeOrders
+      .map((o) => {
+        const itemsStatus = o.items
+          .map((item) => `  - ${item.recipeName || 'Sin receta'}: ${item.status}${item.failureReason ? ` (${item.failureReason})` : ''}`)
+          .join('\n');
+        return `- Orden ${o.id.slice(0, 8)} (${o.customerName}): ${o.status} - ${o.progress}% completado
+${itemsStatus}`;
+      })
+      .join('\n\n');
+
+    activeOrdersSection = `
+### Órdenes activas (detalle)
+${ordersText}`;
+  }
+
   // Kitchen stats section
   let kitchenSection = '';
   if (context.kitchenStats) {
@@ -74,8 +92,23 @@ ${recipesText || 'Sin datos'}
 ### Ingredientes problemáticos (compras fallidas recientes)
 ${context.recentFailedPurchases.join(', ') || 'Ninguno'}
 ${ordersSection}
+${activeOrdersSection}
 ${kitchenSection}
 ${warehouseSection}
+
+## HERRAMIENTAS DISPONIBLES
+Tienes acceso a las siguientes herramientas que puedes usar para realizar acciones:
+
+### createOrder
+Usa esta herramienta cuando el usuario quiera:
+- Crear una orden de comida
+- Pedir platos para alguien
+- Solicitar preparación de comida
+
+Parametros:
+- quantity (requerido): Número de platos (1-100)
+- customerName (opcional): Nombre del cliente
+- notes (opcional): Notas adicionales
 
 ## INSTRUCCIONES
 - Responde de forma concisa y útil
@@ -83,7 +116,10 @@ ${warehouseSection}
 - Si te preguntan qué cocinar, considera el inventario actual y las recetas más exitosas
 - Si te preguntan sobre problemas, menciona los ingredientes con fallas o stock bajo
 - Responde siempre en español
-- Sé proactivo sugiriendo acciones cuando sea relevante`;
+- Sé proactivo sugiriendo acciones cuando sea relevante
+- Cuando el usuario pida crear una orden, usa la herramienta createOrder
+- Confirma al usuario cuando una acción se haya completado exitosamente
+- Si una acción falla, explica el error de forma clara`;
 }
 
 export function buildChatPrompt(systemPrompt: string, userMessage: string): string {

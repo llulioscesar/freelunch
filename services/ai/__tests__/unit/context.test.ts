@@ -15,11 +15,12 @@ jest.mock('../../src/clients/kitchen', () => ({
 
 jest.mock('../../src/clients/orders', () => ({
   getOrdersStats: jest.fn(),
+  getActiveOrders: jest.fn(),
 }));
 
 import { getInventory, getPurchaseStats, getRecentPurchases, getWarehouseStats } from '../../src/clients/warehouse';
 import { getRecipes, getKitchenStats } from '../../src/clients/kitchen';
-import { getOrdersStats } from '../../src/clients/orders';
+import { getOrdersStats, getActiveOrders } from '../../src/clients/orders';
 
 describe('Context Builder', () => {
   beforeEach(() => {
@@ -45,6 +46,7 @@ describe('Context Builder', () => {
       (getOrdersStats as jest.Mock).mockResolvedValue(null);
       (getKitchenStats as jest.Mock).mockResolvedValue(null);
       (getWarehouseStats as jest.Mock).mockResolvedValue(null);
+      (getActiveOrders as jest.Mock).mockResolvedValue([]);
 
       const context = await buildSystemContext();
 
@@ -55,6 +57,7 @@ describe('Context Builder', () => {
       expect(getOrdersStats).toHaveBeenCalled();
       expect(getKitchenStats).toHaveBeenCalled();
       expect(getWarehouseStats).toHaveBeenCalled();
+      expect(getActiveOrders).toHaveBeenCalled();
 
       expect(context.inventory).toHaveLength(1);
       expect(context.recipes).toHaveLength(1);
@@ -77,6 +80,7 @@ describe('Context Builder', () => {
       (getOrdersStats as jest.Mock).mockResolvedValue(null);
       (getKitchenStats as jest.Mock).mockResolvedValue(null);
       (getWarehouseStats as jest.Mock).mockResolvedValue(null);
+      (getActiveOrders as jest.Mock).mockResolvedValue([]);
 
       const context = await buildSystemContext();
 
@@ -99,6 +103,7 @@ describe('Context Builder', () => {
       (getOrdersStats as jest.Mock).mockResolvedValue(null);
       (getKitchenStats as jest.Mock).mockResolvedValue(null);
       (getWarehouseStats as jest.Mock).mockResolvedValue(null);
+      (getActiveOrders as jest.Mock).mockResolvedValue([]);
 
       const context = await buildSystemContext();
 
@@ -122,6 +127,21 @@ describe('Context Builder', () => {
         failedPurchasesByIngredient: [],
       };
 
+      const mockActiveOrders = [
+        {
+          id: 'order-1',
+          status: 'preparing',
+          customerName: 'John Doe',
+          quantity: 2,
+          items: [
+            { id: 'item-1', status: 'preparing', recipeName: 'Pizza' },
+            { id: 'item-2', status: 'pending', recipeName: 'Pasta' },
+          ],
+          progress: 50,
+          createdAt: '2024-01-01T00:00:00Z',
+        },
+      ];
+
       (getInventory as jest.Mock).mockResolvedValue([]);
       (getRecipes as jest.Mock).mockResolvedValue([]);
       (getPurchaseStats as jest.Mock).mockResolvedValue({ total: 0, successful: 0, failed: 0 });
@@ -129,12 +149,29 @@ describe('Context Builder', () => {
       (getOrdersStats as jest.Mock).mockResolvedValue(mockOrdersStats);
       (getKitchenStats as jest.Mock).mockResolvedValue(mockKitchenStats);
       (getWarehouseStats as jest.Mock).mockResolvedValue(mockWarehouseStats);
+      (getActiveOrders as jest.Mock).mockResolvedValue(mockActiveOrders);
 
       const context = await buildSystemContext();
 
       expect(context.ordersStats).toEqual(mockOrdersStats);
       expect(context.kitchenStats).toEqual(mockKitchenStats);
       expect(context.warehouseStats).toEqual(mockWarehouseStats);
+      expect(context.activeOrders).toEqual(mockActiveOrders);
+    });
+
+    it('should set activeOrders to undefined when empty', async () => {
+      (getInventory as jest.Mock).mockResolvedValue([]);
+      (getRecipes as jest.Mock).mockResolvedValue([]);
+      (getPurchaseStats as jest.Mock).mockResolvedValue({ total: 0, successful: 0, failed: 0 });
+      (getRecentPurchases as jest.Mock).mockResolvedValue([]);
+      (getOrdersStats as jest.Mock).mockResolvedValue(null);
+      (getKitchenStats as jest.Mock).mockResolvedValue(null);
+      (getWarehouseStats as jest.Mock).mockResolvedValue(null);
+      (getActiveOrders as jest.Mock).mockResolvedValue([]);
+
+      const context = await buildSystemContext();
+
+      expect(context.activeOrders).toBeUndefined();
     });
   });
 });

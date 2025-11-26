@@ -1,4 +1,4 @@
-import { getOrdersStats } from '../../../src/clients/orders';
+import { getOrdersStats, getActiveOrders } from '../../../src/clients/orders';
 
 // Mock global fetch
 global.fetch = jest.fn();
@@ -41,6 +41,50 @@ describe('Orders Client', () => {
 
       const result = await getOrdersStats();
       expect(result).toBeNull();
+    });
+  });
+
+  describe('getActiveOrders', () => {
+    it('should return active orders', async () => {
+      const mockOrders = [
+        {
+          id: 'order-1',
+          status: 'preparing',
+          customerName: 'John Doe',
+          quantity: 2,
+          items: [
+            { id: 'item-1', status: 'preparing', recipeName: 'Pizza' },
+          ],
+          progress: 50,
+          createdAt: '2024-01-01T00:00:00Z',
+        },
+      ];
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        json: jest.fn().mockResolvedValue({ success: true, data: mockOrders }),
+      });
+
+      const result = await getActiveOrders();
+      expect(result).toEqual(mockOrders);
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/api/orders?status=active&limit=20'));
+    });
+
+    it('should return empty array on error', async () => {
+      (global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
+
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const result = await getActiveOrders();
+      expect(result).toEqual([]);
+      consoleSpy.mockRestore();
+    });
+
+    it('should return empty array when data not in response', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        json: jest.fn().mockResolvedValue({ success: false }),
+      });
+
+      const result = await getActiveOrders();
+      expect(result).toEqual([]);
     });
   });
 });
