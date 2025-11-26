@@ -23,6 +23,10 @@ jest.mock('../../../../src/infrastructure/logging/Logger', () => ({
   },
 }));
 
+jest.mock('../../../../src/infrastructure/http/cors', () => ({
+  withCors: (handler: any) => handler,
+}));
+
 import handler from '../../../../src/presentation/api/history';
 
 describe('History API', () => {
