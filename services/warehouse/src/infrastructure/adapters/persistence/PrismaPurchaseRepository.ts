@@ -67,6 +67,24 @@ export class PrismaPurchaseRepository implements PurchaseRepository {
     return records.map((r) => this.toDomain(r));
   }
 
+  async findPaginated(page: number, limit: number): Promise<{ purchases: Purchase[]; total: number }> {
+    const skip = (page - 1) * limit;
+
+    const [records, total] = await Promise.all([
+      this.prisma.purchase.findMany({
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.purchase.count(),
+    ]);
+
+    return {
+      purchases: records.map((r) => this.toDomain(r)),
+      total,
+    };
+  }
+
   async save(purchase: Purchase): Promise<void> {
     const data = {
       ingredientName: purchase.getIngredientName().getValue(),
@@ -99,6 +117,21 @@ export class PrismaPurchaseRepository implements PurchaseRepository {
     return await this.prisma.purchase.count({
       where: { status },
     });
+  }
+
+  async getStats(): Promise<{ total: number; successful: number; failed: number }> {
+    const [total, failed] = await Promise.all([
+      this.prisma.purchase.count(),
+      this.prisma.purchase.count({
+        where: { obtainedQuantity: 0 },
+      }),
+    ]);
+
+    return {
+      total,
+      successful: total - failed,
+      failed,
+    };
   }
 
   async getTotalPurchasedByIngredient(name: IngredientName): Promise<number> {

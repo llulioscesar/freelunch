@@ -5,6 +5,8 @@ jest.mock('../../../../src/infrastructure/adapters/persistence/PrismaPurchaseRep
   PrismaPurchaseRepository: jest.fn().mockImplementation(() => ({
     findAll: jest.fn().mockResolvedValue([]),
     findRecent: jest.fn().mockResolvedValue([]),
+    findPaginated: jest.fn().mockResolvedValue({ purchases: [], total: 0 }),
+    getStats: jest.fn().mockResolvedValue({ total: 0, successful: 0, failed: 0 }),
   })),
 }));
 

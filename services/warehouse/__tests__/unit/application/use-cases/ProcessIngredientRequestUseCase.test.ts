@@ -33,8 +33,10 @@ describe('ProcessIngredientRequestUseCase', () => {
       findByIngredientName: jest.fn(),
       findByPlateId: jest.fn(),
       findRecent: jest.fn(),
+      findPaginated: jest.fn(),
       save: jest.fn(),
       countByStatus: jest.fn(),
+      getStats: jest.fn(),
       getTotalPurchasedByIngredient: jest.fn(),
     };
 
