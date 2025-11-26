@@ -18,7 +18,7 @@ export const ordersService = {
    * Get all orders
    */
   async getAll(): Promise<OrdersResponse> {
-    return apiFetch<OrdersResponse>(`${BASE_URL}/api/orders`);
+    return apiFetch<OrdersResponse>(`${BASE_URL}/api/list`);
   },
 
   /**
@@ -32,7 +32,7 @@ export const ordersService = {
    * Create a new order
    */
   async create(quantity: number, customerName?: string, notes?: string): Promise<{ success: boolean; order: Order }> {
-    return apiFetch(`${BASE_URL}/api/orders`, {
+    return apiFetch(`${BASE_URL}/api/create`, {
       method: 'POST',
       body: JSON.stringify({ quantity, customerName, notes }),
     });

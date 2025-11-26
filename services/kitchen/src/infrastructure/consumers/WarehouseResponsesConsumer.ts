@@ -381,23 +381,62 @@ export class WarehouseResponsesConsumer {
    * Process a batch of messages (for serverless cron)
    */
   async processBatch(maxMessages: number = 10): Promise<number> {
+    let processedCount = 0;
+
     try {
-      const messages = await this.redis.xreadgroup(
+      // STEP 1: Process pending messages first (retry failed ones)
+      const pendingMessages = await this.redis.xreadgroup(
         this.consumerGroup,
         this.consumerId,
         this.streamName,
-        '>',
+        '0', // Read pending messages for this consumer
         { count: maxMessages }
       );
 
-      if (!messages || messages.length === 0) {
-        logger.debug('No warehouse responses to process');
-        return 0;
+      if (pendingMessages && pendingMessages.length > 0) {
+        for (const [streamName, streamMessages] of pendingMessages as any) {
+          for (const [messageId, fields] of streamMessages) {
+            try {
+              await this.processMessage(messageId as string, fields);
+              processedCount++;
+            } catch (error) {
+              logger.error('Failed to process pending warehouse response', error as Error, {
+                messageId,
+                streamName,
+              });
+            }
+          }
+        }
+
+        logger.info('Pending warehouse responses processed', {
+          count: processedCount,
+          consumerId: this.consumerId,
+        });
       }
 
-      let processedCount = 0;
+      // STEP 2: Process new messages
+      const remainingSlots = maxMessages - processedCount;
+      if (remainingSlots <= 0) {
+        return processedCount;
+      }
 
-      for (const [streamName, streamMessages] of messages as any) {
+      const newMessages = await this.redis.xreadgroup(
+        this.consumerGroup,
+        this.consumerId,
+        this.streamName,
+        '>', // Only new messages
+        { count: remainingSlots }
+      );
+
+      if (!newMessages || newMessages.length === 0) {
+        if (processedCount === 0) {
+          logger.debug('No warehouse responses to process');
+        }
+        return processedCount;
+      }
+
+      // Process each new message
+      for (const [streamName, streamMessages] of newMessages as any) {
         for (const [messageId, fields] of streamMessages) {
           try {
             await this.processMessage(messageId as string, fields);
@@ -419,7 +458,7 @@ export class WarehouseResponsesConsumer {
       return processedCount;
     } catch (error) {
       logger.error('Warehouse responses batch processing failed', error as Error);
-      return 0;
+      return processedCount;
     }
   }
 

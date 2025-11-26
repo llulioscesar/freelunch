@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { useStats, useCreateOrder, useInventory, useOrders, useRecipes } from '../hooks';
 import { Skeleton } from '../components/ui/skeleton';
-import type { Order, InventoryItem } from '../types/api';
+import type { OrderListItem, InventoryItem } from '../types/api';
 
 export const Route = createFileRoute('/')({
   component: DashboardPage,
@@ -20,7 +20,8 @@ export const Route = createFileRoute('/')({
 
 function DashboardPage() {
   const [quantity, setQuantity] = useState(1);
-  const { data: stats, isLoading: statsLoading, error: statsError } = useStats();
+  const { data: statsData, isLoading: statsLoading, error: statsError } = useStats();
+  const stats = statsData?.stats;
   const { data: inventoryData, isLoading: inventoryLoading } = useInventory();
   const { data: ordersData, isLoading: ordersLoading } = useOrders();
   const { data: recipesData } = useRecipes();
@@ -31,7 +32,7 @@ function DashboardPage() {
   };
 
   // Get last 5 orders for recent activity
-  const recentOrders = ordersData?.orders?.slice(0, 5) ?? [];
+  const recentOrders = ordersData?.data?.slice(0, 5) ?? [];
 
   return (
     <div className="space-y-6">
@@ -140,8 +141,8 @@ function DashboardPage() {
               <Skeleton className="h-4 w-3/4" />
               <Skeleton className="h-4 w-1/2" />
             </div>
-          ) : inventoryData?.inventory?.length ? (
-            <InventorySummary items={inventoryData.inventory} />
+          ) : inventoryData?.data?.items?.length ? (
+            <InventorySummary items={inventoryData.data.items} />
           ) : (
             <div className="text-center py-4 text-gray-400">
               No hay inventario disponible
@@ -243,7 +244,7 @@ function InventorySummary({ items }: { items: InventoryItem[] }) {
   );
 }
 
-function RecentOrdersList({ orders }: { orders: Order[] }) {
+function RecentOrdersList({ orders }: { orders: OrderListItem[] }) {
   const statusColors: Record<string, string> = {
     PENDING: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400',
     IN_PROGRESS: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
@@ -272,7 +273,7 @@ function RecentOrdersList({ orders }: { orders: Order[] }) {
               Orden #{order.id.slice(-6)}
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              {order.items?.length ?? 0} platos • {new Date(order.createdAt).toLocaleTimeString()}
+              {order.quantity} platos • {new Date(order.createdAt).toLocaleTimeString()}
             </p>
           </div>
           <span

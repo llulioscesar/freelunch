@@ -261,25 +261,62 @@ export class OrderEventsConsumer {
    * Process a batch of messages (for serverless cron)
    */
   async processBatch(maxMessages: number = 10): Promise<number> {
+    let processedCount = 0;
+
     try {
-      // Read messages using Upstash XREADGROUP syntax
-      const messages = await this.redis.xreadgroup(
+      // STEP 1: Process pending messages first (retry failed ones)
+      const pendingMessages = await this.redis.xreadgroup(
+        this.consumerGroup,
+        this.consumerId,
+        this.streamName,
+        '0', // Read pending messages for this consumer
+        { count: maxMessages }
+      );
+
+      if (pendingMessages && pendingMessages.length > 0) {
+        for (const [streamName, streamMessages] of pendingMessages as any) {
+          for (const [messageId, fields] of streamMessages) {
+            try {
+              await this.processMessage(messageId as string, fields);
+              processedCount++;
+            } catch (error) {
+              logger.error('Failed to process pending message', error as Error, {
+                messageId,
+                streamName,
+              });
+            }
+          }
+        }
+
+        logger.info('Pending messages processed', {
+          count: processedCount,
+          consumerId: this.consumerId,
+        });
+      }
+
+      // STEP 2: Process new messages
+      const remainingSlots = maxMessages - processedCount;
+      if (remainingSlots <= 0) {
+        return processedCount;
+      }
+
+      const newMessages = await this.redis.xreadgroup(
         this.consumerGroup,
         this.consumerId,
         this.streamName,
         '>', // Only new messages
-        { count: maxMessages }
+        { count: remainingSlots }
       );
 
-      if (!messages || messages.length === 0) {
-        logger.debug('No messages to process');
-        return 0;
+      if (!newMessages || newMessages.length === 0) {
+        if (processedCount === 0) {
+          logger.debug('No messages to process');
+        }
+        return processedCount;
       }
 
-      let processedCount = 0;
-
-      // Process each message
-      for (const [streamName, streamMessages] of messages as any) {
+      // Process each new message
+      for (const [streamName, streamMessages] of newMessages as any) {
         for (const [messageId, fields] of streamMessages) {
           try {
             await this.processMessage(messageId as string, fields);
@@ -301,7 +338,7 @@ export class OrderEventsConsumer {
       return processedCount;
     } catch (error) {
       logger.error('Batch processing failed', error as Error);
-      return 0;
+      return processedCount;
     }
   }
 
