@@ -23,6 +23,7 @@ jobs:
       kitchen: ${{ steps.changes.outputs.kitchen }}
       warehouse: ${{ steps.changes.outputs.warehouse }}
       dashboard: ${{ steps.changes.outputs.dashboard }}
+      ai: ${{ steps.changes.outputs.ai }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -45,6 +46,8 @@ jobs:
               - 'services/warehouse/**'
             dashboard:
               - 'apps/dashboard/**'
+            ai:
+              - 'services/ai/**'
 
   # Orders Service
   orders:
@@ -113,3 +116,20 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_DASHBOARD }}
+
+  # AI Service
+  ai:
+    name: AI Service
+    needs: detect-changes
+    if: needs.detect-changes.outputs.ai == 'true'
+    uses: ./.github/workflows/service-ci.yml
+    with:
+      service-name: ai
+      service-path: ./services/ai
+      should-deploy: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/test' || github.ref == 'refs/heads/main') }}
+      environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'preview' }}
+      custom-domain: ${{ github.ref == 'refs/heads/main' && vars.AI_DOMAIN_PROD || (github.ref == 'refs/heads/test' && vars.AI_DOMAIN_STAGING || '') }}
+    secrets:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_AI }}

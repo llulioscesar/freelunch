@@ -61,4 +61,18 @@ export interface PurchaseRepository {
    * Get total quantity purchased by ingredient
    */
   getTotalPurchasedByIngredient(name: IngredientName): Promise<number>;
+
+  /**
+   * Get failed purchases grouped by ingredient
+   */
+  getFailedByIngredient(limit?: number): Promise<{
+    ingredientName: string;
+    failedCount: number;
+    lastError: string | null;
+  }[]>;
+
+  /**
+   * Get purchase counts grouped by status
+   */
+  getCountsByStatus(): Promise<Record<string, number>>;
 }

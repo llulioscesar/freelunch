@@ -236,4 +236,100 @@ export class PrismaPlateRepository implements PlateRepository {
   async count(): Promise<number> {
     return await this.prisma.plate.count();
   }
+
+  async getCountsByStatus(): Promise<Record<string, number>> {
+    const counts = await this.prisma.plate.groupBy({
+      by: ['status'],
+      _count: { status: true },
+    });
+
+    const result: Record<string, number> = {};
+    counts.forEach((c: { status: string; _count: { status: number } }) => {
+      result[c.status] = c._count.status;
+    });
+
+    return result;
+  }
+
+  async getRecipeStats(limit = 10): Promise<{
+    recipeName: string;
+    total: number;
+    ready: number;
+    failed: number;
+  }[]> {
+    // Get total counts per recipe
+    const recipeCounts = await this.prisma.plate.groupBy({
+      by: ['recipeName'],
+      _count: { recipeName: true },
+      where: {
+        recipeName: { not: null },
+      },
+      orderBy: {
+        _count: { recipeName: 'desc' },
+      },
+      take: limit,
+    });
+
+    // Get success/failure counts per recipe
+    const recipeStatusCounts = await this.prisma.plate.groupBy({
+      by: ['recipeName', 'status'],
+      _count: { status: true },
+      where: {
+        recipeName: { not: null },
+        status: { in: ['READY', 'FAILED'] },
+      },
+    });
+
+    // Build result map
+    const statsMap = new Map<string, { total: number; ready: number; failed: number }>();
+
+    recipeCounts.forEach((r: { recipeName: string | null; _count: { recipeName: number } }) => {
+      if (r.recipeName) {
+        statsMap.set(r.recipeName, {
+          total: r._count.recipeName,
+          ready: 0,
+          failed: 0,
+        });
+      }
+    });
+
+    recipeStatusCounts.forEach((r: { recipeName: string | null; status: string; _count: { status: number } }) => {
+      if (r.recipeName && statsMap.has(r.recipeName)) {
+        const stats = statsMap.get(r.recipeName)!;
+        if (r.status === 'READY') {
+          stats.ready = r._count.status;
+        } else if (r.status === 'FAILED') {
+          stats.failed = r._count.status;
+        }
+      }
+    });
+
+    return Array.from(statsMap.entries()).map(([recipeName, stats]) => ({
+      recipeName,
+      ...stats,
+    }));
+  }
+
+  async getFailureReasons(limit = 10): Promise<{
+    reason: string;
+    count: number;
+  }[]> {
+    const reasons = await this.prisma.plate.groupBy({
+      by: ['failureReason'],
+      _count: { failureReason: true },
+      where: {
+        status: 'FAILED',
+        failureReason: { not: null },
+      },
+      orderBy: {
+        _count: { failureReason: 'desc' },
+      },
+      take: limit,
+    });
+
+    return reasons.map((r: { failureReason: string | null; _count: { failureReason: number } }) => ({
+      reason: r.failureReason || 'Unknown',
+      count: r._count.failureReason,
+    }));
+  }
 }

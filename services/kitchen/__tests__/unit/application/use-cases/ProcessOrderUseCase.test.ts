@@ -24,6 +24,9 @@ describe('ProcessOrderUseCase', () => {
       delete: jest.fn(),
       countByStatus: jest.fn(),
       count: jest.fn(),
+      getCountsByStatus: jest.fn(),
+      getRecipeStats: jest.fn(),
+      getFailureReasons: jest.fn(),
     } as jest.Mocked<PlateRepository>;
 
     mockEventPublisher = {
