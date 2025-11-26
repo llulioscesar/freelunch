@@ -4,9 +4,10 @@
  */
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { dependencies } from '../../infrastructure/config/dependencies.js';
+import { withCors } from '../../infrastructure/http/cors.js';
 import { logger } from '../../infrastructure/logging/Logger.js';
 
-export default async function handler(
+async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
@@ -75,3 +76,5 @@ export default async function handler(
     });
   }
 }
+
+export default withCors(handler);

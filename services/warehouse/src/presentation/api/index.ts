@@ -5,6 +5,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { HealthCheckService } from '../../application/services/HealthCheckService.js';
 import { SystemHealthChecker } from '../../infrastructure/adapters/health/SystemHealthChecker.js';
+import { withCors } from '../../infrastructure/http/cors.js';
 
 let healthChecker: SystemHealthChecker | null = null;
 let healthCheckService: HealthCheckService | null = null;
@@ -19,7 +20,7 @@ function getHealthCheckService(): HealthCheckService {
   return healthCheckService;
 }
 
-export default async function handler(
+async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
@@ -69,3 +70,5 @@ export default async function handler(
     });
   }
 }
+
+export default withCors(handler);

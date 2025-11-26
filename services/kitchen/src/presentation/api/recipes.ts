@@ -5,6 +5,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { dependencies } from '../../infrastructure/config/dependencies';
 import { withMetrics } from '../../infrastructure/metrics/MetricsMiddleware';
+import { withCors } from '../../infrastructure/http/cors';
 import { logger } from '../../infrastructure/logging/Logger';
 
 async function getRecipesHandler(
@@ -46,5 +47,5 @@ async function getRecipesHandler(
   }
 }
 
-// Export handler wrapped with metrics middleware (read-only endpoint)
-export default withMetrics(getRecipesHandler);
+// Export handler wrapped with CORS and metrics middleware
+export default withCors(withMetrics(getRecipesHandler));

@@ -25,6 +25,10 @@ jest.mock('../../../../src/infrastructure/adapters/health/SystemHealthChecker', 
   })),
 }));
 
+jest.mock('../../../../src/infrastructure/http/cors', () => ({
+  withCors: (handler: any) => handler,
+}));
+
 // Import after mocking
 import handler from '../../../../src/presentation/api/index';
 

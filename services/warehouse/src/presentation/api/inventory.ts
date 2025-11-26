@@ -6,6 +6,7 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { GetInventoryUseCase } from '../../application/use-cases/GetInventoryUseCase.js';
 import { InitializeInventoryUseCase } from '../../application/use-cases/InitializeInventoryUseCase.js';
 import { PrismaInventoryRepository } from '../../infrastructure/adapters/persistence/PrismaInventoryRepository.js';
+import { withCors } from '../../infrastructure/http/cors.js';
 import { logger } from '../../infrastructure/logging/Logger.js';
 
 let inventoryRepository: PrismaInventoryRepository | null = null;
@@ -25,7 +26,7 @@ function getUseCases() {
   return { getInventoryUseCase, initializeInventoryUseCase };
 }
 
-export default async function handler(
+async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
@@ -65,3 +66,5 @@ export default async function handler(
     });
   }
 }
+
+export default withCors(handler);

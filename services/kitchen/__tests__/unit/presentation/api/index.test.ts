@@ -13,6 +13,10 @@ jest.mock('../../../../src/infrastructure/adapters/health/SystemHealthChecker.js
   SystemHealthChecker: jest.fn().mockImplementation(() => ({})),
 }));
 
+jest.mock('../../../../src/infrastructure/http/cors', () => ({
+  withCors: (handler: any) => handler,
+}));
+
 import handler from '../../../../src/presentation/api/index';
 
 describe('Health Check API', () => {
